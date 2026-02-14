@@ -1,0 +1,1343 @@
+<!doctype html>
+<html lang="no">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#0b0f14" />
+  <title>Farmapp</title>
+  <style>
+    :root{
+      --bg:#0b0f14; --card:#121a22; --text:#e8f0f7; --muted:#8aa0b5; --line:#243242;
+      --accent:#00bb55; --danger:#d44;
+      --radius:16px;
+    }
+    *{box-sizing:border-box;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial}
+    body{margin:0;background:var(--bg);color:var(--text)}
+    a{color:inherit}
+    .wrap{max-width:900px;margin:0 auto;padding:16px;padding-bottom:86px}
+    .row{display:flex;align-items:center;gap:12px}
+    .space{height:12px}
+    .h1{font-size:20px;font-weight:900;margin:0}
+    .h2{font-size:14px;font-weight:900;margin:0 0 8px}
+    .muted{color:var(--muted);font-size:13px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:12px}
+    .btn{display:block;border:1px solid var(--line);border-radius:14px;padding:12px;background:#0f1620;font-weight:900;text-align:center;text-decoration:none}
+    .btn.primary{background:var(--accent);border-color:var(--accent);color:#062}
+    .btn.danger{border-color:var(--danger);color:var(--danger);background:transparent}
+    .btn.small{padding:10px 10px;font-size:13px;border-radius:12px}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .pill{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:999px;padding:6px 10px;font-size:12px;font-weight:900;color:var(--muted)}
+    .input, select, textarea{width:100%;padding:12px;border:1px solid var(--line);border-radius:14px;background:#0f1620;color:var(--text);font-size:15px}
+    textarea{min-height:120px}
+    .nav{position:fixed;left:0;right:0;bottom:0;border-top:1px solid var(--line);background:#0f1620}
+    .nav .inner{max-width:900px;margin:0 auto;display:flex}
+    .nav a{flex:1;padding:12px 8px;text-align:center;text-decoration:none;color:var(--muted);font-weight:900;font-size:12px}
+    .nav a.active{color:var(--text)}
+    .list{display:flex;flex-direction:column;gap:10px}
+    .item{padding:10px 0;border-bottom:1px solid var(--line)}
+    .item:last-child{border-bottom:none}
+    .badge{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:6px 10px;font-size:12px;text-decoration:none;font-weight:900;color:var(--muted)}
+    .right{margin-left:auto}
+    .sheet-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.55)}
+    .sheet{position:fixed;left:0;right:0;bottom:0;background:#0f1620;border-radius:18px 18px 0 0;padding:14px;border-top:1px solid var(--line);max-width:900px;margin:0 auto}
+    hr{border:none;border-top:1px solid var(--line);margin:12px 0}
+    #errorOverlay{position:fixed;inset:0;background:rgba(0,0,0,.72);display:none;z-index:9999}
+    #errorOverlay .box{max-width:900px;margin:16px auto;padding:16px}
+    #errorOverlay pre{white-space:pre-wrap;word-break:break-word;background:#000;border:1px solid #333;border-radius:12px;padding:12px;color:#fff}
+    body.has-bg{background-size:cover;background-position:center;background-attachment:fixed;}
+    body.has-bg::before{content:"";position:fixed;inset:0;background:rgba(11,15,20,.70);z-index:-1;}
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+
+  <div id="errorOverlay">
+    <div class="box">
+      <div class="card">
+        <div class="row" style="justify-content:space-between;">
+          <div>
+            <div class="h1">Noe gikk galt</div>
+            <div class="muted">Appen skal aldri bli “blank”. Kopiér feilen under og send den hit.</div>
+          </div>
+          <a class="btn danger small" href="javascript:void(0)" id="errClose">Lukk</a>
+        </div>
+        <div class="space"></div>
+        <pre id="errText"></pre>
+        <div class="space"></div>
+        <div class="grid2">
+          <a class="btn" href="#/backup">Gå til Backup</a>
+          <a class="btn" href="#/forside">Til Forside</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+/* =======================
+   Farmapp (One-file) v0.4.0
+   Mobil-vennlig GitHub Pages
+   ======================= */
+
+const APP_VERSION = "0.4.0";
+const KEY = "farmapp_state_v2";
+const nowISO = ()=> new Date().toISOString();
+const uid = ()=> Math.random().toString(36).slice(2) + Date.now().toString(36);
+
+/* ---------- Date/Time formatting (dd.mm.åååå + 24t) ---------- */
+const nbDate = new Intl.DateTimeFormat("nb-NO", { day:"2-digit", month:"2-digit", year:"numeric" });
+const nbDT = new Intl.DateTimeFormat("nb-NO", { day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit", second:"2-digit", hour12:false });
+
+function fmtDate(iso){ try{ return nbDate.format(new Date(iso)); }catch{ return ""; } }
+function fmtDateTime(iso){ try{ return nbDT.format(new Date(iso)); }catch{ return ""; } }
+function toISOFromDateInput(dateStr){
+  if(!dateStr) return null;
+  const d = new Date(dateStr + "T09:00:00");
+  return isNaN(d.getTime()) ? null : d.toISOString();
+}
+function toISOFromDatetimeLocal(dtLocal){
+  if(!dtLocal) return null;
+  const d = new Date(dtLocal);
+  return isNaN(d.getTime()) ? null : d.toISOString();
+}
+function toDatetimeLocalValue(iso){
+  try{
+    const d = new Date(iso);
+    const pad=(n)=>String(n).padStart(2,"0");
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }catch{ return ""; }
+}
+
+/* ---------- DOM helpers ---------- */
+function h(html){
+  const t=document.createElement("template");
+  t.innerHTML = html.trim();
+  return t.content.firstElementChild;
+}
+const $ = (sel, root=document)=> root.querySelector(sel);
+function escapeHtml(str){
+  return String(str ?? "")
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;")
+    .replaceAll("'","&#039;");
+}
+
+/* ---------- Export helpers (CSV/Download) ---------- */
+function toCSV(rows){
+  const keys = Array.from(new Set(rows.flatMap(r=>Object.keys(r||{}))));
+  const esc = (v)=> {
+    const s = String(v ?? "");
+    if(/[",\n\r;]/.test(s)) return '"' + s.replaceAll('"','""') + '"';
+    return s;
+  };
+  const header = keys.join(";");
+  const lines = rows.map(r=> keys.map(k=>esc(r?.[k])).join(";"));
+  return [header, ...lines].join("\n");
+}
+function downloadText(filename, text, mime="text/plain"){
+  const blob = new Blob([text], {type:mime});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(()=> URL.revokeObjectURL(a.href), 500);
+}
+function safeFilename(name){
+  return (name||"export").toLowerCase()
+    .replace(/[^a-z0-9\-_]+/gi,"-")
+    .replace(/-+/g,"-")
+    .slice(0,60);
+}
+
+/* ---------- State ---------- */
+const defaultState = {
+  meta: { version: 1, createdAt: nowISO(), updatedAt: nowISO() },
+  farm: { name: "Min gård", kommune: "Karmøy", ksl: false },
+
+  activities: [], // global feed: {id,type,title,description,createdAt,refs,deletedAt}
+
+  tasks: [], // {id,title,description,dueDateISO,completedAtISO?,createdAtISO}
+
+  work: {
+    running: null, // {id, startedAtISO, customer, jobType}
+    sessions: []   // {id, startedAtISO, endedAtISO, customer, jobType, notes, editedAtISO?}
+  },
+
+  assets: [],    // {id,name,kind,brandModel,serial,notes,createdAtISO,archivedAtISO?}
+  purchases: [], // {id,dateISO,supplier,category,amountNok,notes,receiptUrl,assetId?,createdAtISO}
+
+  settings: {
+    weather: { place: "Karmøy" },
+    shortcuts: [{ id:"yr", title:"Vær (yr.no)", url:"https://www.yr.no" }],
+    backgroundUrl: ""
+  }
+};
+
+function deepClone(obj){ return JSON.parse(JSON.stringify(obj)); }
+function migrateState(s){
+  if(!s.meta) s.meta = deepClone(defaultState.meta);
+  if(!s.farm) s.farm = deepClone(defaultState.farm);
+  if(!Array.isArray(s.activities)) s.activities = [];
+  if(!Array.isArray(s.tasks)) s.tasks = [];
+  if(!s.work) s.work = deepClone(defaultState.work);
+  if(!Array.isArray(s.work.sessions)) s.work.sessions = [];
+  if(!Array.isArray(s.assets)) s.assets = [];
+  if(!Array.isArray(s.purchases)) s.purchases = [];
+  if(!s.settings) s.settings = deepClone(defaultState.settings);
+  if(!s.settings.weather) s.settings.weather = deepClone(defaultState.settings.weather);
+  if(!Array.isArray(s.settings.shortcuts)) s.settings.shortcuts = deepClone(defaultState.settings.shortcuts);
+  if(typeof s.settings.backgroundUrl !== "string") s.settings.backgroundUrl = "";
+  return s;
+}
+function loadState(){
+  try{
+    const raw = localStorage.getItem(KEY);
+    if(!raw) return deepClone(defaultState);
+    const parsed = JSON.parse(raw);
+    const merged = { ...deepClone(defaultState), ...parsed };
+    return migrateState(merged);
+  }catch{
+    return deepClone(defaultState);
+  }
+}
+function saveState(state){
+  state.meta = state.meta || {};
+  state.meta.updatedAt = nowISO();
+  localStorage.setItem(KEY, JSON.stringify(state));
+}
+function exportJSON(){ return JSON.stringify(loadState(), null, 2); }
+function importJSON(txt){
+  const parsed = JSON.parse(txt);
+  if(!parsed || !parsed.meta) throw new Error("Ugyldig backup (mangler meta)");
+  saveState(migrateState(parsed));
+}
+
+/* ---------- Activity ---------- */
+function addActivity(state, { type, title, description="", refs={} }){
+  const a = { id: uid(), type, title: title || type, description, createdAt: nowISO(), refs, deletedAt: null };
+  state.activities.unshift(a);
+  if(state.activities.length > 7000) state.activities.length = 7000;
+  return a;
+}
+
+/* ---------- Models ---------- */
+function newTask({title, description, dueDateISO}){
+  return { id: uid(), title, description, dueDateISO, completedAtISO: null, createdAtISO: nowISO() };
+}
+function newWorkSession({startedAtISO, endedAtISO, customer, jobType, notes=""}){
+  return { id: uid(), startedAtISO, endedAtISO, customer, jobType, notes, editedAtISO: null };
+}
+function newAsset({name, kind, brandModel="", serial="", notes=""}){
+  return { id: uid(), name, kind, brandModel, serial, notes, createdAtISO: nowISO(), archivedAtISO: null };
+}
+function newPurchase({dateISO, supplier, category, amountNok, notes="", receiptUrl="", assetId=null}){
+  return { id: uid(), dateISO, supplier, category, amountNok: Number(amountNok)||0, notes, receiptUrl, assetId, createdAtISO: nowISO() };
+}
+
+/* ---------- Router ---------- */
+function route(){
+  const hash = (location.hash || "#/forside").slice(1);
+  const [path, query] = hash.split("?");
+  const params = new URLSearchParams(query || "");
+  return { path, params };
+}
+function nav(path){ location.hash = `#${path}`; }
+
+/* ---------- Error overlay ---------- */
+function showError(err){
+  const overlay = $("#errorOverlay");
+  const pre = $("#errText");
+  const msg = (err && err.stack) ? err.stack : String(err);
+  if(pre) pre.textContent = msg;
+  if(overlay) overlay.style.display = "block";
+}
+function hideError(){
+  const overlay = $("#errorOverlay");
+  if(overlay) overlay.style.display = "none";
+}
+window.addEventListener("error", (e)=> showError(e.error || e.message));
+window.addEventListener("unhandledrejection", (e)=> showError(e.reason || e));
+document.addEventListener("click", (e)=> { if(e.target && e.target.id==="errClose") hideError(); });
+
+/* ---------- Background ---------- */
+function applyBackground(){
+  const s = loadState();
+  const url = (s.settings?.backgroundUrl || "").trim();
+  if(url){
+    document.body.classList.add("has-bg");
+    document.body.style.backgroundImage = `url('${url.replaceAll("'","%27")}')`;
+  }else{
+    document.body.classList.remove("has-bg");
+    document.body.style.backgroundImage = "";
+  }
+}
+
+/* ---------- Shell ---------- */
+function bottomNav(active){
+  const is = (p)=> active===p ? "active" : "";
+  return h(`
+    <div class="nav">
+      <div class="inner">
+        <a class="${is("/forside")}" href="#/forside">Forside</a>
+        <a class="${is("/oppgaver")}" href="#/oppgaver">Oppgaver</a>
+        <a class="${is("/jobb")}" href="#/jobb">Jobb</a>
+        <a class="${is("/mer")}" href="#/mer">Mer</a>
+        <a class="${is("/innstillinger")}" href="#/innstillinger">Innst.</a>
+      </div>
+    </div>
+  `);
+}
+function renderShell(out, activePath){
+  const node = h(`<div></div>`);
+  node.innerHTML = `
+    <div class="wrap">
+      <div class="row" style="justify-content:space-between;">
+        <div>
+          <div class="h1">${escapeHtml(out.title || "")}</div>
+          <div class="muted">${escapeHtml(out.subtitle || "")}</div>
+        </div>
+        <span class="pill">v${escapeHtml(APP_VERSION)}</span>
+      </div>
+      <div class="space"></div>
+    </div>
+  `;
+  const wrap = node.querySelector(".wrap");
+  wrap.appendChild(out.node);
+  node.appendChild(bottomNav(activePath));
+  return node;
+}
+
+/* =======================
+   Pages
+   ======================= */
+
+function buildYrUrl(place){
+  const q = encodeURIComponent((place || "Karmøy").trim());
+  return `https://www.yr.no/nb/sok?q=${q}`;
+}
+
+function pageForside(state){
+  const running = state.work.running;
+  const activities = state.activities.filter(a=>!a.deletedAt).slice(0, 12);
+
+  const shortcuts = (state.settings.shortcuts || []).map(sc=>{
+    if(sc.id === "yr"){
+      return { ...sc, url: buildYrUrl(state.settings.weather?.place || "Karmøy") };
+    }
+    return sc;
+  });
+
+  const scHtml = shortcuts.length ? `
+    <div class="grid2">
+      ${shortcuts.map(s=>`
+        <a class="btn" target="_blank" rel="noopener" href="${escapeHtml(s.url)}">${escapeHtml(s.title)}</a>
+      `).join("")}
+    </div>
+  ` : `<div class="muted">Ingen snarveier enda.</div>`;
+
+  const liveHtml = running ? `
+    <div class="card">
+      <div class="h2">Pågående jobb</div>
+      <div class="muted">${escapeHtml(running.customer)} – ${escapeHtml(running.jobType)}</div>
+      <div class="space"></div>
+      <a class="btn primary" href="#/jobb">Åpne jobbklokke</a>
+    </div>
+    <div class="space"></div>
+  ` : "";
+
+  const node = h(`
+    <div>
+      ${liveHtml}
+
+      <div class="card">
+        <div class="h2">Snarveier</div>
+        ${scHtml}
+        <div class="space"></div>
+        <a class="badge" href="#/innstillinger">Rediger snarveier</a>
+      </div>
+
+      <div class="space"></div>
+
+      <div class="card">
+        <div class="h2">Siste aktiviteter</div>
+        ${activities.length ? `
+          <div class="list">
+            ${activities.map(a=>`
+              <a class="item" style="text-decoration:none" href="#/aktivitet?id=${a.id}">
+                <div class="row" style="justify-content:space-between;">
+                  <div>
+                    <div><b>${escapeHtml(a.title)}</b></div>
+                    <div class="muted">${escapeHtml(a.type)} • ${fmtDateTime(a.createdAt)}</div>
+                  </div>
+                  <span class="badge">Åpne</span>
+                </div>
+              </a>
+            `).join("")}
+          </div>
+        ` : `<div class="muted">Ingen aktiviteter enda.</div>`}
+      </div>
+
+      <div class="space"></div>
+
+      <div class="card">
+        <div class="h2">Hurtig</div>
+        <div class="grid2">
+          <a class="btn" href="#/oppgaver?new=1">Ny oppgave</a>
+          <a class="btn" href="#/jobb">Jobbklokke</a>
+          <a class="btn" href="#/maskiner">Maskiner/utstyr</a>
+          <a class="btn" href="#/innkjop">Innkjøp</a>
+        </div>
+      </div>
+    </div>
+  `);
+
+  return { title:"Forside", subtitle:`${state.farm.name} • Norsk • GitHub-only`, node };
+}
+
+function pageAktivitet(state, params){
+  const id = params.get("id");
+  const a = state.activities.find(x=>x.id===id && !x.deletedAt);
+  const node = h(`
+    <div>
+      <div class="card">
+        ${a ? `
+          <div class="h2">${escapeHtml(a.title)}</div>
+          <div class="muted">${escapeHtml(a.type)} • ${fmtDateTime(a.createdAt)}</div>
+          <div class="space"></div>
+          ${a.description ? `<div>${escapeHtml(a.description)}</div>` : `<div class="muted">Ingen detaljer.</div>`}
+          <div class="space"></div>
+          <div class="muted small">Ref: ${escapeHtml(JSON.stringify(a.refs || {}))}</div>
+        ` : `<div class="muted">Fant ikke aktiviteten (kan være slettet).</div>`}
+      </div>
+      <div class="space"></div>
+      <a class="btn" href="#/forside">Tilbake</a>
+    </div>
+  `);
+  return { title:"Aktivitet", subtitle:"Detaljer", node };
+}
+
+/* ----- Tasks ----- */
+function taskSheet(){
+  return `
+    <div class="sheet-backdrop" id="bd"></div>
+    <div class="sheet">
+      <div class="h2">Ny oppgave</div>
+      <label class="muted">Tittel</label><div class="space"></div>
+      <input class="input" id="t_title" placeholder="f.eks Ormekur lam" />
+      <div class="space"></div>
+      <label class="muted">Dato</label><div class="space"></div>
+      <input class="input" id="t_date" type="date" />
+      <div class="space"></div>
+      <label class="muted">Kommentar</label><div class="space"></div>
+      <textarea class="input" id="t_desc" placeholder="Valgfritt"></textarea>
+      <div class="space"></div>
+      <a class="btn primary" href="javascript:void(0)" id="t_save">Lagre</a>
+      <div class="space"></div>
+      <a class="btn" href="#/oppgaver">Avbryt</a>
+    </div>
+  `;
+}
+
+function pageOppgaver(state, params){
+  const view = params.get("view") || "apne"; // apne|ferdige
+  const creating = params.get("new") === "1";
+  const q = (params.get("q") || "").trim().toLowerCase();
+
+  const openTasks = state.tasks.filter(t=>!t.completedAtISO);
+  const doneTasks = state.tasks.filter(t=>!!t.completedAtISO);
+
+  const list = (view==="ferdige" ? doneTasks : openTasks)
+    .filter(t => !q ? true : (`${t.title} ${t.description || ""} ${t.dueDateISO || ""}`).toLowerCase().includes(q))
+    .sort((a,b)=> (a.dueDateISO || "").localeCompare(b.dueDateISO || ""));
+
+  const node = h(`
+    <div>
+      <div class="card">
+        <div class="row" style="justify-content:space-between;">
+          <div>
+            <a class="badge" href="#/oppgaver?view=apne">Åpne (${openTasks.length})</a>
+            <a class="badge" href="#/oppgaver?view=ferdige">Ferdige (${doneTasks.length})</a>
+          </div>
+          <a class="btn small primary" href="#/oppgaver?new=1">+ Ny</a>
+        </div>
+        <div class="space"></div>
+        <input class="input" id="q" placeholder="Søk ${view==="ferdige" ? "ferdige" : "åpne"}..." value="${escapeHtml(params.get("q")||"")}" />
+      </div>
+
+      <div class="space"></div>
+
+      <div class="card">
+        <div class="h2">${view==="ferdige" ? "Ferdige" : "Åpne"} oppgaver</div>
+        ${list.length ? `
+          <div class="list">
+            ${list.map(t=>`
+              <div class="item">
+                <div class="row" style="justify-content:space-between;">
+                  <div>
+                    <div><b>${escapeHtml(t.title)}</b></div>
+                    <div class="muted">${t.dueDateISO ? fmtDate(t.dueDateISO) : ""}${t.completedAtISO ? " • fullført" : ""}</div>
+                  </div>
+                  <div class="row">
+                    ${t.completedAtISO ? `
+                      <a class="badge" href="javascript:void(0)" data-act="reopen" data-id="${t.id}">Åpne igjen</a>
+                    ` : `
+                      <a class="badge" href="javascript:void(0)" data-act="done" data-id="${t.id}">Fullfør</a>
+                    `}
+                  </div>
+                </div>
+                ${t.description ? `<div class="muted" style="margin-top:6px">${escapeHtml(t.description)}</div>`:""}
+              </div>
+            `).join("")}
+          </div>
+        ` : `<div class="muted">Ingen oppgaver her.</div>`}
+        <div class="muted" style="margin-top:10px">
+          Sletting er skjult med vilje. Oppgaver flyttes til “Ferdige” og er søkbare.
+        </div>
+      </div>
+
+      ${creating ? taskSheet() : ""}
+    </div>
+  `);
+
+  setTimeout(()=>{
+    const inp = $("#q", node);
+    inp?.addEventListener("input", (e)=>{
+      const v = e.target.value;
+      const p = new URLSearchParams(params);
+      if(v) p.set("q", v); else p.delete("q");
+      location.hash = `#/oppgaver?${p.toString()}`;
+    });
+
+    node.querySelectorAll("[data-act]").forEach(el=>{
+      el.addEventListener("click", ()=>{
+        const act = el.getAttribute("data-act");
+        const id = el.getAttribute("data-id");
+        const s = loadState();
+        const t = s.tasks.find(x=>x.id===id);
+        if(!t) return;
+        const now = nowISO();
+        if(act==="done"){
+          t.completedAtISO = now;
+          addActivity(s, { type:"TODO_FERDIG", title:`Oppgave ferdig: ${t.title}`, refs:{ taskId: t.id }});
+        }else if(act==="reopen"){
+          t.completedAtISO = null;
+          addActivity(s, { type:"TODO_GJENÅPNET", title:`Oppgave åpnet igjen: ${t.title}`, refs:{ taskId: t.id }});
+        }
+        saveState(s);
+        location.hash = `#/oppgaver?view=${view}`;
+      });
+    });
+
+    if(creating){
+      $("#bd")?.addEventListener("click", ()=> nav("/oppgaver"));
+      const d = new Date(); const pad=(n)=>String(n).padStart(2,"0");
+      const dateEl = $("#t_date");
+      if(dateEl) dateEl.value = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+
+      $("#t_save")?.addEventListener("click", ()=>{
+        const title = $("#t_title")?.value?.trim();
+        const dateStr = $("#t_date")?.value;
+        const desc = $("#t_desc")?.value?.trim() || "";
+        if(!title){ alert("Fyll ut tittel"); return; }
+        const dueISO = toISOFromDateInput(dateStr) || null;
+        const s = loadState();
+        const task = newTask({title, description: desc, dueDateISO: dueISO});
+        s.tasks.push(task);
+        addActivity(s, { type:"TODO_NY", title:`Ny oppgave: ${task.title}`, description: desc, refs:{ taskId: task.id }});
+        saveState(s);
+        nav("/oppgaver");
+      });
+    }
+  }, 0);
+
+  return { title:"Oppgaver", subtitle:"Åpne / Ferdige (søkbare)", node };
+}
+
+/* ----- Work ----- */
+let tickTimer = null;
+function calcElapsed(startISO){
+  const start = new Date(startISO).getTime();
+  const ms = Math.max(0, Date.now() - start);
+  const s = Math.floor(ms/1000);
+  const hh = Math.floor(s/3600);
+  const mm = Math.floor((s%3600)/60);
+  const ss = s%60;
+  const pad=(n)=>String(n).padStart(2,"0");
+  return `${pad(hh)}:${pad(mm)}:${pad(ss)}`;
+}
+function workEditSheet(session){
+  return `
+    <div class="sheet-backdrop" id="bd"></div>
+    <div class="sheet">
+      <div class="h2">Rediger økt</div>
+      <label class="muted">Start</label><div class="space"></div>
+      <input class="input" id="ws_start" type="datetime-local" value="${escapeHtml(toDatetimeLocalValue(session.startedAtISO))}" />
+      <div class="space"></div>
+      <label class="muted">Stopp</label><div class="space"></div>
+      <input class="input" id="ws_end" type="datetime-local" value="${escapeHtml(toDatetimeLocalValue(session.endedAtISO))}" />
+      <div class="space"></div>
+      <label class="muted">Notat</label><div class="space"></div>
+      <textarea class="input" id="ws_notes">${escapeHtml(session.notes||"")}</textarea>
+      <div class="space"></div>
+      <a class="btn primary" href="javascript:void(0)" id="ws_save">Lagre</a>
+      <div class="space"></div>
+      <a class="btn" href="#/jobb">Avbryt</a>
+    </div>
+  `;
+}
+function pageJobb(state, params){
+  const running = state.work.running;
+  const editingId = params.get("edit");
+
+  const sessions = state.work.sessions
+    .slice()
+    .sort((a,b)=> (b.startedAtISO || "").localeCompare(a.startedAtISO || ""))
+    .slice(0, 30);
+
+  const currentEdit = editingId ? (state.work.sessions.find(x=>x.id===editingId) || null) : null;
+
+  const node = h(`
+    <div>
+      <div class="card">
+        <div class="h2">Jobbklokke</div>
+        <div class="muted">Teller sekunder live. Du kan redigere tider i ettertid.</div>
+        <div class="space"></div>
+
+        ${running ? `
+          <div class="row" style="justify-content:space-between;">
+            <div>
+              <div><b>${escapeHtml(running.customer)}</b> – ${escapeHtml(running.jobType)}</div>
+              <div class="muted">Startet: ${fmtDateTime(running.startedAtISO)}</div>
+            </div>
+            <span class="pill" id="elapsed">00:00:00</span>
+          </div>
+          <div class="space"></div>
+          <a class="btn danger" href="javascript:void(0)" id="stop">Stopp</a>
+        ` : `
+          <label class="muted">Kunde</label><div class="space"></div>
+          <input class="input" id="c" placeholder="f.eks Ola Hansen" />
+          <div class="space"></div>
+          <label class="muted">Jobbtype</label><div class="space"></div>
+          <input class="input" id="t" placeholder="f.eks Slått" />
+          <div class="space"></div>
+          <a class="btn primary" href="javascript:void(0)" id="start">Start</a>
+        `}
+      </div>
+
+      <div class="space"></div>
+
+      <div class="card">
+        <div class="h2">Siste økter</div>
+        ${sessions.length ? `
+          <div class="list">
+            ${sessions.map(s=>`
+              <div class="item">
+                <div class="row" style="justify-content:space-between;">
+                  <div>
+                    <div><b>${escapeHtml(s.customer)}</b> – ${escapeHtml(s.jobType)}</div>
+                    <div class="muted">${fmtDateTime(s.startedAtISO)} → ${fmtDateTime(s.endedAtISO)}</div>
+                  </div>
+                  <a class="badge" href="#/jobb?edit=${s.id}">Rediger</a>
+                </div>
+                ${s.notes ? `<div class="muted" style="margin-top:6px">${escapeHtml(s.notes)}</div>`:""}
+              </div>
+            `).join("")}
+          </div>
+        ` : `<div class="muted">Ingen økter enda.</div>`}
+      </div>
+
+      ${currentEdit ? workEditSheet(currentEdit) : ""}
+    </div>
+  `);
+
+  setTimeout(()=>{
+    if(tickTimer){ clearInterval(tickTimer); tickTimer = null; }
+
+    if(running){
+      const el = $("#elapsed");
+      const update = ()=> { if(el) el.textContent = calcElapsed(running.startedAtISO); };
+      update();
+      tickTimer = setInterval(update, 1000);
+
+      $("#stop")?.addEventListener("click", ()=>{
+        const s = loadState();
+        const r = s.work.running;
+        if(!r) return;
+        const endISO = nowISO();
+        const session = newWorkSession({ startedAtISO: r.startedAtISO, endedAtISO: endISO, customer: r.customer, jobType: r.jobType });
+        s.work.sessions.push(session);
+        s.work.running = null;
+        addActivity(s, {
+          type:"JOBB_STOPP",
+          title:`Jobb ferdig: ${session.customer} – ${session.jobType}`,
+          description:`${fmtDateTime(session.startedAtISO)} → ${fmtDateTime(session.endedAtISO)}`,
+          refs:{ workId: session.id }
+        });
+        saveState(s);
+        nav("/forside");
+      });
+    }else{
+      $("#start")?.addEventListener("click", ()=>{
+        const customer = $("#c")?.value?.trim();
+        const jobType = $("#t")?.value?.trim();
+        if(!customer || !jobType){ alert("Fyll ut kunde og jobbtype"); return; }
+        const s = loadState();
+        s.work.running = { id: uid(), startedAtISO: nowISO(), customer, jobType };
+        addActivity(s, { type:"JOBB_START", title:`Jobb startet: ${customer} – ${jobType}`, refs:{ running:true }});
+        saveState(s);
+        render();
+      });
+    }
+
+    if(currentEdit){
+      $("#bd")?.addEventListener("click", ()=> nav("/jobb"));
+      $("#ws_save")?.addEventListener("click", ()=>{
+        const s = loadState();
+        const sess = s.work.sessions.find(x=>x.id===currentEdit.id);
+        if(!sess){ alert("Fant ikke økt"); return; }
+        const startISO = toISOFromDatetimeLocal($("#ws_start")?.value);
+        const endISO = toISOFromDatetimeLocal($("#ws_end")?.value);
+        if(!startISO || !endISO){ alert("Fyll ut start og stopp"); return; }
+        if(new Date(endISO).getTime() <= new Date(startISO).getTime()){ alert("Stopp må være etter start"); return; }
+        sess.startedAtISO = startISO;
+        sess.endedAtISO = endISO;
+        sess.notes = $("#ws_notes")?.value?.trim() || "";
+        sess.editedAtISO = nowISO();
+        addActivity(s, { type:"JOBB_REDIGERT", title:`Jobb redigert: ${sess.customer} – ${sess.jobType}`, refs:{ workId: sess.id }});
+        saveState(s);
+        nav("/jobb");
+      });
+    }
+  }, 0);
+
+  return { title:"Jobb", subtitle:"Live timer + redigering", node };
+}
+
+/* ----- More ----- */
+function pageMer(){
+  const node = h(`
+    <div>
+      <div class="card">
+        <div class="h2">Moduler</div>
+        <div class="grid2">
+          <a class="btn" href="#/maskiner">Maskiner / utstyr</a>
+          <a class="btn" href="#/innkjop">Innkjøp</a>
+          <a class="btn" href="#/backup">Backup</a>
+          <a class="btn" href="#/innstillinger">Innstillinger</a>
+        </div>
+      </div>
+      <div class="space"></div>
+      <div class="card">
+        <div class="h2">Kommende</div>
+        <div class="muted">Neste: egne “service/reparasjon”-registreringer per maskin, og sprøytejournal-wizard.</div>
+      </div>
+    </div>
+  `);
+  return { title:"Mer", subtitle:"Alt samlet", node };
+}
+
+/* ----- Assets (Machines/Equipment) ----- */
+function assetSheet(){
+  return `
+    <div class="sheet-backdrop" id="bd"></div>
+    <div class="sheet">
+      <div class="h2">Ny maskin/utstyr</div>
+
+      <label class="muted">Navn</label><div class="space"></div>
+      <input class="input" id="a_name" placeholder="f.eks Massey Ferguson 135" />
+
+      <div class="space"></div>
+      <label class="muted">Type</label><div class="space"></div>
+      <select class="input" id="a_kind">
+        <option value="Traktor">Traktor</option>
+        <option value="Redskap">Redskap</option>
+        <option value="Maskin">Maskin</option>
+        <option value="Utstyr">Utstyr</option>
+        <option value="Annet">Annet</option>
+      </select>
+
+      <div class="space"></div>
+      <label class="muted">Merke/modell (valgfritt)</label><div class="space"></div>
+      <input class="input" id="a_model" placeholder="f.eks MF 135" />
+
+      <div class="space"></div>
+      <label class="muted">Serienr (valgfritt)</label><div class="space"></div>
+      <input class="input" id="a_serial" placeholder="..." />
+
+      <div class="space"></div>
+      <label class="muted">Notat</label><div class="space"></div>
+      <textarea class="input" id="a_notes" placeholder="Valgfritt"></textarea>
+
+      <div class="space"></div>
+      <a class="btn primary" href="javascript:void(0)" id="a_save">Lagre</a>
+      <div class="space"></div>
+      <a class="btn" href="#/maskiner">Avbryt</a>
+    </div>
+  `;
+}
+
+function exportAssetHistoryCSV(state, asset){
+  const rows = state.activities
+    .filter(a=>!a.deletedAt && a.refs?.assetId === asset.id)
+    .slice().reverse()
+    .map(a=>({
+      tidspunkt: a.createdAt,
+      type: a.type,
+      tittel: a.title,
+      beskrivelse: a.description || ""
+    }));
+  downloadText(`maskin-historikk-${safeFilename(asset.name)}.csv`, toCSV(rows), "text/csv");
+}
+function exportAssetHistoryJSON(state, asset){
+  const rows = state.activities.filter(a=>!a.deletedAt && a.refs?.assetId === asset.id).slice().reverse();
+  downloadText(`maskin-historikk-${safeFilename(asset.name)}.json`, JSON.stringify(rows, null, 2), "application/json");
+}
+
+function pageMaskiner(state, params){
+  const creating = params.get("new")==="1";
+  const id = params.get("id");
+  const q = (params.get("q")||"").trim().toLowerCase();
+
+  const list = state.assets
+    .filter(a=>!a.archivedAtISO)
+    .filter(a=> !q ? true : (`${a.name} ${a.kind} ${a.brandModel||""} ${a.serial||""}`).toLowerCase().includes(q))
+    .sort((a,b)=> (a.name||"").localeCompare(b.name||""));
+
+  const current = id ? state.assets.find(a=>a.id===id) : null;
+  const history = current ? state.activities.filter(x=>!x.deletedAt && x.refs?.assetId===current.id).slice(0, 40) : [];
+
+  const node = h(`
+    <div>
+      <div class="card">
+        <div class="row" style="justify-content:space-between;">
+          <div>
+            <div class="h2">Maskiner / utstyr</div>
+            <div class="muted">Historikk per maskin + eksport</div>
+          </div>
+          <a class="btn small primary" href="#/maskiner?new=1">+ Ny</a>
+        </div>
+        <div class="space"></div>
+        <input class="input" id="q" placeholder="Søk..." value="${escapeHtml(params.get("q")||"")}" />
+      </div>
+
+      <div class="space"></div>
+
+      <div class="card">
+        <div class="h2">Liste</div>
+        ${list.length ? `
+          <div class="list">
+            ${list.map(a=>`
+              <a class="item" style="text-decoration:none" href="#/maskiner?id=${a.id}">
+                <div class="row" style="justify-content:space-between;">
+                  <div>
+                    <div><b>${escapeHtml(a.name)}</b> <span class="badge">${escapeHtml(a.kind)}</span></div>
+                    <div class="muted">${escapeHtml(a.brandModel||"")}${a.serial?` • ${escapeHtml(a.serial)}`:""}</div>
+                  </div>
+                  <span class="badge">Åpne</span>
+                </div>
+              </a>
+            `).join("")}
+          </div>
+        ` : `<div class="muted">Ingen maskiner enda.</div>`}
+      </div>
+
+      ${current ? `
+        <div class="space"></div>
+        <div class="card">
+          <div class="row" style="justify-content:space-between;">
+            <div>
+              <div class="h2">${escapeHtml(current.name)}</div>
+              <div class="muted">${escapeHtml(current.kind)} • ${escapeHtml(current.brandModel||"")}</div>
+            </div>
+            <a class="badge" href="#/maskiner">Lukk</a>
+          </div>
+          ${current.notes ? `<div class="muted" style="margin-top:8px">${escapeHtml(current.notes)}</div>`:""}
+
+          <div class="space"></div>
+          <div class="grid2">
+            <a class="btn" href="javascript:void(0)" id="exCsv">Eksport CSV</a>
+            <a class="btn" href="javascript:void(0)" id="exJson">Eksport JSON</a>
+          </div>
+
+          <div class="space"></div>
+          <div class="h2">Historikk</div>
+          ${history.length ? `
+            <div class="list">
+              ${history.map(hh=>`
+                <a class="item" style="text-decoration:none" href="#/aktivitet?id=${hh.id}">
+                  <div><b>${escapeHtml(hh.title)}</b></div>
+                  <div class="muted">${escapeHtml(hh.type)} • ${fmtDateTime(hh.createdAt)}</div>
+                </a>
+              `).join("")}
+            </div>
+          ` : `<div class="muted">Ingen aktiviteter knyttet til denne enda.</div>`}
+          <div class="muted" style="margin-top:10px">
+            Foreløpig knyttes maskin-aktivitet via Innkjøp (velg maskin).
+            Neste steg: egne service/reparasjon-registreringer direkte på maskin.
+          </div>
+        </div>
+      ` : ""}
+
+      ${creating ? assetSheet() : ""}
+    </div>
+  `);
+
+  setTimeout(()=>{
+    $("#q", node)?.addEventListener("input", (e)=>{
+      const v = e.target.value;
+      const p = new URLSearchParams(params);
+      if(v) p.set("q", v); else p.delete("q");
+      if(id) p.set("id", id);
+      location.hash = `#/maskiner?${p.toString()}`;
+    });
+
+    if(creating){
+      $("#bd")?.addEventListener("click", ()=> nav("/maskiner"));
+      $("#a_save")?.addEventListener("click", ()=>{
+        const name = $("#a_name")?.value?.trim();
+        const kind = $("#a_kind")?.value;
+        const brandModel = $("#a_model")?.value?.trim() || "";
+        const serial = $("#a_serial")?.value?.trim() || "";
+        const notes = $("#a_notes")?.value?.trim() || "";
+        if(!name){ alert("Fyll ut navn"); return; }
+        const s = loadState();
+        const asset = newAsset({name, kind, brandModel, serial, notes});
+        s.assets.push(asset);
+        addActivity(s, { type:"MASKIN_NY", title:`Ny maskin/utstyr: ${asset.name}`, description: notes, refs:{ assetId: asset.id }});
+        saveState(s);
+        nav("/maskiner");
+      });
+    }
+
+    if(current){
+      $("#exCsv")?.addEventListener("click", ()=> exportAssetHistoryCSV(loadState(), current));
+      $("#exJson")?.addEventListener("click", ()=> exportAssetHistoryJSON(loadState(), current));
+    }
+  }, 0);
+
+  return { title:"Maskiner/utstyr", subtitle:"Register + historikk + eksport", node };
+}
+
+/* ----- Purchases ----- */
+function purchaseSheet(state){
+  const assets = state.assets.filter(a=>!a.archivedAtISO).sort((a,b)=> (a.name||"").localeCompare(b.name||""));
+  return `
+    <div class="sheet-backdrop" id="bd"></div>
+    <div class="sheet">
+      <div class="h2">Nytt innkjøp</div>
+
+      <label class="muted">Dato</label><div class="space"></div>
+      <input class="input" id="p_date" type="date" />
+
+      <div class="space"></div>
+      <label class="muted">Leverandør</label><div class="space"></div>
+      <input class="input" id="p_supplier" placeholder="f.eks Felleskjøpet" />
+
+      <div class="space"></div>
+      <label class="muted">Kategori</label><div class="space"></div>
+      <input class="input" id="p_cat" placeholder="f.eks Reservedel / Dieselfilter" />
+
+      <div class="space"></div>
+      <label class="muted">Beløp (NOK)</label><div class="space"></div>
+      <input class="input" id="p_amount" type="number" placeholder="0" />
+
+      <div class="space"></div>
+      <label class="muted">Knytt til maskin (valgfritt)</label><div class="space"></div>
+      <select class="input" id="p_asset">
+        <option value="">—</option>
+        ${assets.map(a=>`<option value="${a.id}">${escapeHtml(a.name)}</option>`).join("")}
+      </select>
+
+      <div class="space"></div>
+      <label class="muted">Kvittering-lenke (valgfritt)</label><div class="space"></div>
+      <input class="input" id="p_receipt" placeholder="https://..." />
+
+      <div class="space"></div>
+      <label class="muted">Notat</label><div class="space"></div>
+      <textarea class="input" id="p_notes" placeholder="Valgfritt"></textarea>
+
+      <div class="space"></div>
+      <a class="btn primary" href="javascript:void(0)" id="p_save">Lagre</a>
+      <div class="space"></div>
+      <a class="btn" href="#/innkjop">Avbryt</a>
+    </div>
+  `;
+}
+
+function exportPurchasesCSV(state){
+  const rows = state.purchases.slice().sort((a,b)=> (a.dateISO||"").localeCompare(b.dateISO||"")).map(p=>({
+    dato: p.dateISO,
+    leverandor: p.supplier,
+    kategori: p.category,
+    belop_nok: p.amountNok,
+    maskin: p.assetId ? (state.assets.find(a=>a.id===p.assetId)?.name || "") : "",
+    kvittering: p.receiptUrl || "",
+    notat: p.notes || ""
+  }));
+  downloadText(`innkjop-${new Date().toISOString().slice(0,10)}.csv`, toCSV(rows), "text/csv");
+}
+function exportPurchasesJSON(state){
+  downloadText(`innkjop-${new Date().toISOString().slice(0,10)}.json`, JSON.stringify(state.purchases, null, 2), "application/json");
+}
+
+function pageInnkjop(state, params){
+  const creating = params.get("new")==="1";
+  const q = (params.get("q")||"").trim().toLowerCase();
+
+  const list = state.purchases
+    .filter(p=> !q ? true : (`${p.supplier} ${p.category} ${p.notes||""}`).toLowerCase().includes(q))
+    .slice()
+    .sort((a,b)=> (b.dateISO||"").localeCompare(a.dateISO||""))
+    .slice(0, 60);
+
+  const node = h(`
+    <div>
+      <div class="card">
+        <div class="row" style="justify-content:space-between;">
+          <div>
+            <div class="h2">Innkjøp</div>
+            <div class="muted">Historikk + eksport</div>
+          </div>
+          <a class="btn small primary" href="#/innkjop?new=1">+ Ny</a>
+        </div>
+        <div class="space"></div>
+        <div class="grid2">
+          <a class="btn" href="javascript:void(0)" id="exCsv">Eksport CSV</a>
+          <a class="btn" href="javascript:void(0)" id="exJson">Eksport JSON</a>
+        </div>
+        <div class="space"></div>
+        <input class="input" id="q" placeholder="Søk..." value="${escapeHtml(params.get("q")||"")}" />
+      </div>
+
+      <div class="space"></div>
+
+      <div class="card">
+        <div class="h2">Siste innkjøp</div>
+        ${list.length ? `
+          <div class="list">
+            ${list.map(p=>{
+              const assetName = p.assetId ? (state.assets.find(a=>a.id===p.assetId)?.name || "") : "";
+              return `
+                <div class="item">
+                  <div class="row" style="justify-content:space-between;">
+                    <div>
+                      <div><b>${escapeHtml(p.supplier || "Innkjøp")}</b> – ${escapeHtml(p.category || "")}</div>
+                      <div class="muted">${p.dateISO ? fmtDate(p.dateISO) : ""} • ${Number(p.amountNok||0).toFixed(0)} NOK ${assetName ? " • " + escapeHtml(assetName) : ""}</div>
+                    </div>
+                    ${p.receiptUrl ? `<a class="badge" target="_blank" rel="noopener" href="${escapeHtml(p.receiptUrl)}">Kvittering</a>` : `<span class="badge">—</span>`}
+                  </div>
+                  ${p.notes ? `<div class="muted" style="margin-top:6px">${escapeHtml(p.notes)}</div>`:""}
+                </div>
+              `;
+            }).join("")}
+          </div>
+        ` : `<div class="muted">Ingen innkjøp enda.</div>`}
+      </div>
+
+      ${creating ? purchaseSheet(state) : ""}
+    </div>
+  `);
+
+  setTimeout(()=>{
+    $("#q", node)?.addEventListener("input", (e)=>{
+      const v = e.target.value;
+      const p = new URLSearchParams(params);
+      if(v) p.set("q", v); else p.delete("q");
+      location.hash = `#/innkjop?${p.toString()}`;
+    });
+
+    $("#exCsv")?.addEventListener("click", ()=> exportPurchasesCSV(loadState()));
+    $("#exJson")?.addEventListener("click", ()=> exportPurchasesJSON(loadState()));
+
+    if(creating){
+      $("#bd")?.addEventListener("click", ()=> nav("/innkjop"));
+      const d = new Date(); const pad=(n)=>String(n).padStart(2,"0");
+      const dateEl = $("#p_date");
+      if(dateEl) dateEl.value = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+
+      $("#p_save")?.addEventListener("click", ()=>{
+        const supplier = $("#p_supplier")?.value?.trim() || "";
+        const category = $("#p_cat")?.value?.trim() || "";
+        const amount = Number($("#p_amount")?.value || 0);
+        const dateISO = toISOFromDateInput($("#p_date")?.value) || nowISO();
+        const assetId = $("#p_asset")?.value || null;
+        const receiptUrl = $("#p_receipt")?.value?.trim() || "";
+        const notes = $("#p_notes")?.value?.trim() || "";
+
+        if(!supplier && !category){ alert("Fyll ut minst leverandør eller kategori"); return; }
+
+        const s = loadState();
+        const purchase = newPurchase({ dateISO, supplier, category, amountNok: amount, notes, receiptUrl, assetId });
+        s.purchases.push(purchase);
+
+        const assetName = assetId ? (s.assets.find(a=>a.id===assetId)?.name || "") : "";
+        addActivity(s, {
+          type:"INNKJOP_NY",
+          title:`Innkjøp: ${supplier || "Ukjent"} – ${category || ""}`.trim(),
+          description:`Beløp: ${Number(amount||0).toFixed(0)} NOK${assetName ? ` • Maskin: ${assetName}` : ""}${notes ? ` • ${notes}` : ""}`,
+          refs:{ purchaseId: purchase.id, assetId: assetId || undefined }
+        });
+
+        saveState(s);
+        nav("/innkjop");
+      });
+    }
+  }, 0);
+
+  return { title:"Innkjøp", subtitle:"Historikk + eksport", node };
+}
+
+/* ----- Settings ----- */
+function shortcutSheet(){
+  return `
+    <div class="sheet-backdrop" id="bd"></div>
+    <div class="sheet">
+      <div class="h2">Ny snarvei</div>
+      <label class="muted">Navn</label><div class="space"></div>
+      <input class="input" id="sc_title" placeholder="f.eks Felleskjøpet" />
+      <div class="space"></div>
+      <label class="muted">Lenke (URL)</label><div class="space"></div>
+      <input class="input" id="sc_url" placeholder="https://..." />
+      <div class="space"></div>
+      <a class="btn primary" href="javascript:void(0)" id="sc_save">Lagre</a>
+      <div class="space"></div>
+      <a class="btn" href="#/innstillinger">Avbryt</a>
+    </div>
+  `;
+}
+function pageInnstillinger(state, params){
+  const addingShortcut = params.get("shortcut") === "1";
+  const shortcuts = state.settings.shortcuts || [];
+
+  const node = h(`
+    <div>
+      <div class="card">
+        <div class="h2">Gård</div>
+        <label class="muted">Gårdsnavn</label><div class="space"></div>
+        <input class="input" id="farmName" value="${escapeHtml(state.farm.name)}" />
+        <div class="space"></div>
+        <a class="btn primary" href="javascript:void(0)" id="saveFarm">Lagre</a>
+      </div>
+
+      <div class="space"></div>
+
+      <div class="card">
+        <div class="h2">Vær (yr.no)</div>
+        <div class="muted">Sted brukes for å lage yr.no-søk.</div>
+        <div class="space"></div>
+        <input class="input" id="weatherPlace" value="${escapeHtml(state.settings.weather?.place || "Karmøy")}" />
+        <div class="space"></div>
+        <a class="btn primary" href="javascript:void(0)" id="saveWeather">Lagre</a>
+      </div>
+
+      <div class="space"></div>
+
+      <div class="card">
+        <div class="h2">Bakgrunnsbilde</div>
+        <div class="muted">Lim inn en bilde-URL (kan forbedres senere).</div>
+        <div class="space"></div>
+        <input class="input" id="bgUrl" placeholder="https://..." value="${escapeHtml(state.settings.backgroundUrl || "")}" />
+        <div class="space"></div>
+        <a class="btn primary" href="javascript:void(0)" id="saveBg">Lagre</a>
+        <div class="space"></div>
+        <a class="btn danger" href="javascript:void(0)" id="clearBg">Fjern</a>
+      </div>
+
+      <div class="space"></div>
+
+      <div class="card">
+        <div class="row" style="justify-content:space-between;">
+          <div>
+            <div class="h2">Snarveier</div>
+            <div class="muted">Lag egne weblinker (yr.no oppdateres automatisk).</div>
+          </div>
+          <a class="btn small primary" href="#/innstillinger?shortcut=1">+ Ny</a>
+        </div>
+        <div class="space"></div>
+        ${shortcuts.length ? `
+          <div class="list">
+            ${shortcuts.map(sc=>`
+              <div class="item">
+                <div class="row" style="justify-content:space-between;">
+                  <div>
+                    <div><b>${escapeHtml(sc.title)}</b> ${sc.id==="yr" ? `<span class="badge">yr.no</span>`:""}</div>
+                    <div class="muted">${escapeHtml(sc.url)}</div>
+                  </div>
+                  ${sc.id==="yr" ? `<span class="badge">Fast</span>` : `<a class="badge" href="javascript:void(0)" data-del="${escapeHtml(sc.id)}">Fjern</a>`}
+                </div>
+              </div>
+            `).join("")}
+          </div>
+        ` : `<div class="muted">Ingen snarveier.</div>`}
+      </div>
+
+      <div class="space"></div>
+
+      <div class="card">
+        <div class="h2">Backup</div>
+        <a class="btn" href="#/backup">Åpne Backup</a>
+      </div>
+
+      ${addingShortcut ? shortcutSheet() : ""}
+    </div>
+  `);
+
+  setTimeout(()=>{
+    $("#saveFarm")?.addEventListener("click", ()=>{
+      const s = loadState();
+      s.farm.name = $("#farmName")?.value?.trim() || "Min gård";
+      addActivity(s, { type:"INNST_SAVE", title:"Oppdatert gårdsnavn", refs:{} });
+      saveState(s);
+      nav("/forside");
+    });
+
+    $("#saveWeather")?.addEventListener("click", ()=>{
+      const s = loadState();
+      s.settings.weather.place = $("#weatherPlace")?.value?.trim() || "Karmøy";
+      addActivity(s, { type:"INNST_SAVE", title:"Oppdatert vær-sted", refs:{ place: s.settings.weather.place } });
+      saveState(s);
+      nav("/forside");
+    });
+
+    $("#saveBg")?.addEventListener("click", ()=>{
+      const s = loadState();
+      s.settings.backgroundUrl = $("#bgUrl")?.value?.trim() || "";
+      addActivity(s, { type:"INNST_SAVE", title:"Oppdatert bakgrunn", refs:{} });
+      saveState(s);
+      applyBackground();
+      nav("/forside");
+    });
+
+    $("#clearBg")?.addEventListener("click", ()=>{
+      const s = loadState();
+      s.settings.backgroundUrl = "";
+      addActivity(s, { type:"INNST_SAVE", title:"Fjernet bakgrunn", refs:{} });
+      saveState(s);
+      applyBackground();
+      nav("/forside");
+    });
+
+    node.querySelectorAll("[data-del]").forEach(el=>{
+      el.addEventListener("click", ()=>{
+        const id = el.getAttribute("data-del");
+        const s = loadState();
+        s.settings.shortcuts = (s.settings.shortcuts||[]).filter(x=>x.id!==id);
+        addActivity(s, { type:"SNARVEI_FJERNET", title:"Snarvei fjernet", refs:{ id }});
+        saveState(s);
+        nav("/innstillinger");
+      });
+    });
+
+    if(addingShortcut){
+      $("#bd")?.addEventListener("click", ()=> nav("/innstillinger"));
+      $("#sc_save")?.addEventListener("click", ()=>{
+        const title = $("#sc_title")?.value?.trim();
+        const url = $("#sc_url")?.value?.trim();
+        if(!title || !url){ alert("Fyll ut navn og lenke"); return; }
+        if(!/^https?:\/\//i.test(url)){ alert("Lenke må starte med http:// eller https://"); return; }
+        const s = loadState();
+        const id = uid();
+        s.settings.shortcuts.push({ id, title, url });
+        addActivity(s, { type:"SNARVEI_NY", title:`Ny snarvei: ${title}`, refs:{ url }});
+        saveState(s);
+        nav("/innstillinger");
+      });
+    }
+  }, 0);
+
+  return { title:"Innstillinger", subtitle:"Gård, vær, snarveier, bakgrunn", node };
+}
+
+/* ----- Backup ----- */
+function pageBackup(){
+  const node = h(`
+    <div>
+      <div class="card">
+        <div class="h2">Eksporter</div>
+        <div class="muted">Trykk for å fylle feltet. Du kan også laste ned som fil.</div>
+        <div class="space"></div>
+        <div class="grid2">
+          <a class="btn" href="javascript:void(0)" id="btnExport">Vis backup-tekst</a>
+          <a class="btn" href="javascript:void(0)" id="btnDownload">Last ned fil</a>
+        </div>
+        <div class="space"></div>
+        <textarea class="input" id="bkText" placeholder="Backup kommer her..."></textarea>
+      </div>
+
+      <div class="space"></div>
+
+      <div class="card">
+        <div class="h2">Importer</div>
+        <div class="muted">Limet inn tekst eller velg fil. Import overskriver lokalt.</div>
+        <div class="space"></div>
+        <input class="input" id="bkFile" type="file" accept="application/json" />
+        <div class="space"></div>
+        <a class="btn danger" href="javascript:void(0)" id="btnImport">Importer (overskriv)</a>
+      </div>
+    </div>
+  `);
+
+  setTimeout(()=>{
+    const ta = $("#bkText");
+    $("#btnExport")?.addEventListener("click", ()=> { ta.value = exportJSON(); });
+
+    $("#btnDownload")?.addEventListener("click", ()=>{
+      downloadText(`farmapp-backup-${new Date().toISOString().slice(0,10)}.json`, exportJSON(), "application/json");
+    });
+
+    $("#bkFile")?.addEventListener("change", async (e)=>{
+      const f = e.target.files?.[0];
+      if(!f) return;
+      const txt = await f.text();
+      ta.value = txt;
+    });
+
+    $("#btnImport")?.addEventListener("click", ()=>{
+      if(!confirm("Import overskriver alt lokalt. Fortsette?")) return;
+      const txt = ta.value.trim();
+      importJSON(txt);
+      alert("Import OK");
+      nav("/forside");
+    });
+  }, 0);
+
+  return { title:"Backup", subtitle:"Trygghet først", node };
+}
+
+/* =======================
+   Render
+   ======================= */
+function render(){
+  try{
+    applyBackground();
+    const r = route();
+    const state = loadState();
+
+    let out = null;
+    if(r.path === "/forside") out = pageForside(state);
+    else if(r.path === "/oppgaver") out = pageOppgaver(state, r.params);
+    else if(r.path === "/jobb") out = pageJobb(state, r.params);
+    else if(r.path === "/mer") out = pageMer(state);
+    else if(r.path === "/maskiner") out = pageMaskiner(state, r.params);
+    else if(r.path === "/innkjop") out = pageInnkjop(state, r.params);
+    else if(r.path === "/innstillinger") out = pageInnstillinger(state, r.params);
+    else if(r.path === "/backup") out = pageBackup(state);
+    else if(r.path === "/aktivitet") out = pageAktivitet(state, r.params);
+    else { nav("/forside"); return; }
+
+    const app = $("#app");
+    app.innerHTML = "";
+    app.appendChild(renderShell(out, r.path));
+  }catch(err){
+    showError(err);
+  }
+}
+
+window.addEventListener("hashchange", render);
+render();
+</script>
+</body>
+</html> 
