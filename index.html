@@ -3,49 +3,121 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <meta name="theme-color" content="#0b0f14" />
+  <meta name="theme-color" content="#0a1a12" />
   <title>Farmapp</title>
   <style>
     :root{
-      --bg:#0b0f14; --card:#121a22; --text:#e8f0f7; --muted:#8aa0b5; --line:#243242;
-      --accent:#00bb55; --danger:#d44;
-      --radius:16px;
+      /* Mørkegrønn profil */
+      --bg:#07150f;
+      --bg2:#0a1a12;
+      --card:#0f241a;
+      --card2:#102a1e;
+      --text:#e9fff5;
+      --muted:#9fc7b6;
+      --line:#1f3f30;
+
+      --accent:#18c46c;
+      --accent2:#0ea85a;
+      --danger:#ff5c5c;
+
+      --radius:18px;
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
     }
+
     *{box-sizing:border-box;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial}
-    body{margin:0;background:var(--bg);color:var(--text)}
+    body{margin:0;background:radial-gradient(1200px 800px at 30% 0%, #0b2519 0%, var(--bg) 45%, #040c08 100%);color:var(--text)}
     a{color:inherit}
-    .wrap{max-width:900px;margin:0 auto;padding:16px;padding-bottom:86px}
+
+    .wrap{max-width:980px;margin:0 auto;padding:16px;padding-bottom:92px}
     .row{display:flex;align-items:center;gap:12px}
     .space{height:12px}
-    .h1{font-size:20px;font-weight:900;margin:0}
-    .h2{font-size:14px;font-weight:900;margin:0 0 8px}
+    .h1{font-size:20px;font-weight:950;margin:0;letter-spacing:.2px}
+    .h2{font-size:14px;font-weight:950;margin:0 0 8px}
     .muted{color:var(--muted);font-size:13px}
-    .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:12px}
-    .btn{display:block;border:1px solid var(--line);border-radius:14px;padding:12px;background:#0f1620;font-weight:900;text-align:center;text-decoration:none}
-    .btn.primary{background:var(--accent);border-color:var(--accent);color:#062}
-    .btn.danger{border-color:var(--danger);color:var(--danger);background:transparent}
+    .small{font-size:12px}
+
+    .card{
+      background:linear-gradient(180deg, rgba(255,255,255,.02), rgba(0,0,0,.06)), var(--card);
+      border:1px solid rgba(255,255,255,.06);
+      border-radius:var(--radius);
+      padding:12px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(6px);
+    }
+    .card.flat{box-shadow:none}
+    .cardHeader{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+
+    .btn{
+      display:block;border:1px solid rgba(255,255,255,.08);
+      border-radius:14px;padding:12px;background:rgba(10,26,18,.55);
+      font-weight:900;text-align:center;text-decoration:none;
+    }
+    .btn:hover{filter:brightness(1.04)}
+    .btn.primary{background:linear-gradient(180deg, var(--accent), var(--accent2));border-color:rgba(0,0,0,.0);color:#052312}
+    .btn.ghost{background:transparent}
+    .btn.danger{border-color:rgba(255,92,92,.55);color:var(--danger);background:transparent}
     .btn.small{padding:10px 10px;font-size:13px;border-radius:12px}
+
     .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-    .pill{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:999px;padding:6px 10px;font-size:12px;font-weight:900;color:var(--muted)}
-    .input, select, textarea{width:100%;padding:12px;border:1px solid var(--line);border-radius:14px;background:#0f1620;color:var(--text);font-size:15px}
+    .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+    @media (max-width:720px){
+      .grid3{grid-template-columns:1fr 1fr;}
+    }
+
+    .pill{
+      display:inline-flex;align-items:center;gap:8px;
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:999px;padding:6px 10px;
+      font-size:12px;font-weight:950;color:var(--muted);
+      background:rgba(0,0,0,.18);
+    }
+    .pill.ok{color:#bff7dc;border-color:rgba(24,196,108,.35)}
+    .pill.warn{color:#ffe9b8;border-color:rgba(255,213,128,.25)}
+
+    .input, select, textarea{
+      width:100%;padding:12px;border:1px solid rgba(255,255,255,.10);
+      border-radius:14px;background:rgba(0,0,0,.22);
+      color:var(--text);font-size:15px;outline:none;
+    }
     textarea{min-height:120px}
-    .nav{position:fixed;left:0;right:0;bottom:0;border-top:1px solid var(--line);background:#0f1620}
-    .nav .inner{max-width:900px;margin:0 auto;display:flex}
-    .nav a{flex:1;padding:12px 8px;text-align:center;text-decoration:none;color:var(--muted);font-weight:900;font-size:12px}
+
+    .nav{
+      position:fixed;left:0;right:0;bottom:0;
+      border-top:1px solid rgba(255,255,255,.08);
+      background:rgba(7,21,15,.78);
+      backdrop-filter: blur(10px);
+    }
+    .nav .inner{max-width:980px;margin:0 auto;display:flex}
+    .nav a{flex:1;padding:12px 8px;text-align:center;text-decoration:none;color:rgba(159,199,182,.9);font-weight:950;font-size:12px}
     .nav a.active{color:var(--text)}
+    .nav a .dot{display:block;width:6px;height:6px;border-radius:999px;margin:6px auto 0;background:transparent}
+    .nav a.active .dot{background:var(--accent)}
+
     .list{display:flex;flex-direction:column;gap:10px}
-    .item{padding:10px 0;border-bottom:1px solid var(--line)}
+    .item{padding:10px 0;border-bottom:1px solid rgba(255,255,255,.08)}
     .item:last-child{border-bottom:none}
-    .badge{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:6px 10px;font-size:12px;text-decoration:none;font-weight:900;color:var(--muted)}
+    .badge{
+      display:inline-block;border:1px solid rgba(255,255,255,.10);
+      border-radius:999px;padding:6px 10px;font-size:12px;text-decoration:none;font-weight:950;color:var(--muted);
+      background:rgba(0,0,0,.18);
+    }
+    .badge.lock{opacity:.75}
     .right{margin-left:auto}
-    .sheet-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.55)}
-    .sheet{position:fixed;left:0;right:0;bottom:0;background:#0f1620;border-radius:18px 18px 0 0;padding:14px;border-top:1px solid var(--line);max-width:900px;margin:0 auto}
-    hr{border:none;border-top:1px solid var(--line);margin:12px 0}
+
+    .sheet-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.60)}
+    .sheet{
+      position:fixed;left:0;right:0;bottom:0;
+      background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(0,0,0,.06)), #091a12;
+      border-radius:18px 18px 0 0;padding:14px;border-top:1px solid rgba(255,255,255,.10);
+      max-width:980px;margin:0 auto;
+      box-shadow: 0 -20px 50px rgba(0,0,0,.55);
+    }
+    hr{border:none;border-top:1px solid rgba(255,255,255,.10);margin:12px 0}
+
+    /* error overlay */
     #errorOverlay{position:fixed;inset:0;background:rgba(0,0,0,.72);display:none;z-index:9999}
-    #errorOverlay .box{max-width:900px;margin:16px auto;padding:16px}
+    #errorOverlay .box{max-width:980px;margin:16px auto;padding:16px}
     #errorOverlay pre{white-space:pre-wrap;word-break:break-word;background:#000;border:1px solid #333;border-radius:12px;padding:12px;color:#fff}
-    body.has-bg{background-size:cover;background-position:center;background-attachment:fixed;}
-    body.has-bg::before{content:"";position:fixed;inset:0;background:rgba(11,15,20,.70);z-index:-1;}
   </style>
 </head>
 <body>
@@ -74,19 +146,25 @@
 
 <script>
 /* =======================
-   Farmapp (One-file) v0.4.0
-   Mobil-vennlig GitHub Pages
+   Farmapp (One-file) v0.5.0
+   - grønn UI
+   - bedre forside oversikt
+   - service/reparasjon pr maskin
+   - rådgiver modul (låst)
    ======================= */
 
-const APP_VERSION = "0.4.0";
+const APP_VERSION = "0.5.0";
 const KEY = "farmapp_state_v2";
 const nowISO = ()=> new Date().toISOString();
 const uid = ()=> Math.random().toString(36).slice(2) + Date.now().toString(36);
 
-/* ---------- Date/Time formatting (dd.mm.åååå + 24t) ---------- */
+/* ---------- Date/Time (dd.mm.åååå + 24t) ---------- */
 const nbDate = new Intl.DateTimeFormat("nb-NO", { day:"2-digit", month:"2-digit", year:"numeric" });
-const nbDT = new Intl.DateTimeFormat("nb-NO", { day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit", second:"2-digit", hour12:false });
-
+const nbDT = new Intl.DateTimeFormat("nb-NO", {
+  day:"2-digit", month:"2-digit", year:"numeric",
+  hour:"2-digit", minute:"2-digit", second:"2-digit",
+  hour12:false
+});
 function fmtDate(iso){ try{ return nbDate.format(new Date(iso)); }catch{ return ""; } }
 function fmtDateTime(iso){ try{ return nbDT.format(new Date(iso)); }catch{ return ""; } }
 function toISOFromDateInput(dateStr){
@@ -108,11 +186,7 @@ function toDatetimeLocalValue(iso){
 }
 
 /* ---------- DOM helpers ---------- */
-function h(html){
-  const t=document.createElement("template");
-  t.innerHTML = html.trim();
-  return t.content.firstElementChild;
-}
+function h(html){ const t=document.createElement("template"); t.innerHTML = html.trim(); return t.content.firstElementChild; }
 const $ = (sel, root=document)=> root.querySelector(sel);
 function escapeHtml(str){
   return String(str ?? "")
@@ -123,7 +197,7 @@ function escapeHtml(str){
     .replaceAll("'","&#039;");
 }
 
-/* ---------- Export helpers (CSV/Download) ---------- */
+/* ---------- Export helpers ---------- */
 function toCSV(rows){
   const keys = Array.from(new Set(rows.flatMap(r=>Object.keys(r||{}))));
   const esc = (v)=> {
@@ -146,10 +220,7 @@ function downloadText(filename, text, mime="text/plain"){
   setTimeout(()=> URL.revokeObjectURL(a.href), 500);
 }
 function safeFilename(name){
-  return (name||"export").toLowerCase()
-    .replace(/[^a-z0-9\-_]+/gi,"-")
-    .replace(/-+/g,"-")
-    .slice(0,60);
+  return (name||"export").toLowerCase().replace(/[^a-z0-9\-_]+/gi,"-").replace(/-+/g,"-").slice(0,60);
 }
 
 /* ---------- State ---------- */
@@ -157,22 +228,25 @@ const defaultState = {
   meta: { version: 1, createdAt: nowISO(), updatedAt: nowISO() },
   farm: { name: "Min gård", kommune: "Karmøy", ksl: false },
 
-  activities: [], // global feed: {id,type,title,description,createdAt,refs,deletedAt}
+  activities: [],
 
-  tasks: [], // {id,title,description,dueDateISO,completedAtISO?,createdAtISO}
+  tasks: [],
 
   work: {
-    running: null, // {id, startedAtISO, customer, jobType}
-    sessions: []   // {id, startedAtISO, endedAtISO, customer, jobType, notes, editedAtISO?}
+    running: null,
+    sessions: []
   },
 
-  assets: [],    // {id,name,kind,brandModel,serial,notes,createdAtISO,archivedAtISO?}
-  purchases: [], // {id,dateISO,supplier,category,amountNok,notes,receiptUrl,assetId?,createdAtISO}
+  assets: [],
+  purchases: [],
+
+  /* NYTT: service/reparasjon */
+  services: [], // {id,assetId,dateISO,category,costNok,notes,createdAtISO}
 
   settings: {
     weather: { place: "Karmøy" },
     shortcuts: [{ id:"yr", title:"Vær (yr.no)", url:"https://www.yr.no" }],
-    backgroundUrl: ""
+    backgroundUrl: "" // kan brukes senere igjen hvis du vil
   }
 };
 
@@ -186,6 +260,7 @@ function migrateState(s){
   if(!Array.isArray(s.work.sessions)) s.work.sessions = [];
   if(!Array.isArray(s.assets)) s.assets = [];
   if(!Array.isArray(s.purchases)) s.purchases = [];
+  if(!Array.isArray(s.services)) s.services = [];
   if(!s.settings) s.settings = deepClone(defaultState.settings);
   if(!s.settings.weather) s.settings.weather = deepClone(defaultState.settings.weather);
   if(!Array.isArray(s.settings.shortcuts)) s.settings.shortcuts = deepClone(defaultState.settings.shortcuts);
@@ -219,7 +294,7 @@ function importJSON(txt){
 function addActivity(state, { type, title, description="", refs={} }){
   const a = { id: uid(), type, title: title || type, description, createdAt: nowISO(), refs, deletedAt: null };
   state.activities.unshift(a);
-  if(state.activities.length > 7000) state.activities.length = 7000;
+  if(state.activities.length > 9000) state.activities.length = 9000;
   return a;
 }
 
@@ -235,6 +310,9 @@ function newAsset({name, kind, brandModel="", serial="", notes=""}){
 }
 function newPurchase({dateISO, supplier, category, amountNok, notes="", receiptUrl="", assetId=null}){
   return { id: uid(), dateISO, supplier, category, amountNok: Number(amountNok)||0, notes, receiptUrl, assetId, createdAtISO: nowISO() };
+}
+function newService({assetId, dateISO, category, costNok, notes=""}){
+  return { id: uid(), assetId, dateISO, category, costNok: Number(costNok)||0, notes, createdAtISO: nowISO() };
 }
 
 /* ---------- Router ---------- */
@@ -262,15 +340,16 @@ window.addEventListener("error", (e)=> showError(e.error || e.message));
 window.addEventListener("unhandledrejection", (e)=> showError(e.reason || e));
 document.addEventListener("click", (e)=> { if(e.target && e.target.id==="errClose") hideError(); });
 
-/* ---------- Background ---------- */
+/* ---------- Background (optional) ---------- */
 function applyBackground(){
   const s = loadState();
   const url = (s.settings?.backgroundUrl || "").trim();
   if(url){
-    document.body.classList.add("has-bg");
-    document.body.style.backgroundImage = `url('${url.replaceAll("'","%27")}')`;
+    document.body.style.backgroundImage = `linear-gradient(rgba(0,0,0,.55), rgba(0,0,0,.70)), url('${url.replaceAll("'","%27")}')`;
+    document.body.style.backgroundSize = "cover";
+    document.body.style.backgroundPosition = "center";
+    document.body.style.backgroundAttachment = "fixed";
   }else{
-    document.body.classList.remove("has-bg");
     document.body.style.backgroundImage = "";
   }
 }
@@ -281,11 +360,11 @@ function bottomNav(active){
   return h(`
     <div class="nav">
       <div class="inner">
-        <a class="${is("/forside")}" href="#/forside">Forside</a>
-        <a class="${is("/oppgaver")}" href="#/oppgaver">Oppgaver</a>
-        <a class="${is("/jobb")}" href="#/jobb">Jobb</a>
-        <a class="${is("/mer")}" href="#/mer">Mer</a>
-        <a class="${is("/innstillinger")}" href="#/innstillinger">Innst.</a>
+        <a class="${is("/forside")}" href="#/forside">Forside<div class="dot"></div></a>
+        <a class="${is("/oppgaver")}" href="#/oppgaver">Oppgaver<div class="dot"></div></a>
+        <a class="${is("/jobb")}" href="#/jobb">Jobb<div class="dot"></div></a>
+        <a class="${is("/mer")}" href="#/mer">Mer<div class="dot"></div></a>
+        <a class="${is("/innstillinger")}" href="#/innstillinger">Innst.<div class="dot"></div></a>
       </div>
     </div>
   `);
@@ -319,9 +398,33 @@ function buildYrUrl(place){
   return `https://www.yr.no/nb/sok?q=${q}`;
 }
 
+function statCard(label, value, hint="", pillClass=""){
+  return `
+    <div class="card flat" style="background:rgba(0,0,0,.14);border:1px solid rgba(255,255,255,.08);box-shadow:none">
+      <div class="muted">${escapeHtml(label)}</div>
+      <div class="row" style="justify-content:space-between;align-items:flex-end">
+        <div style="font-size:22px;font-weight:980;line-height:1.1">${escapeHtml(value)}</div>
+        ${hint ? `<span class="pill ${pillClass}">${escapeHtml(hint)}</span>` : ``}
+      </div>
+    </div>
+  `;
+}
+
 function pageForside(state){
   const running = state.work.running;
-  const activities = state.activities.filter(a=>!a.deletedAt).slice(0, 12);
+  const activities = state.activities.filter(a=>!a.deletedAt).slice(0, 10);
+
+  const openTasks = state.tasks.filter(t=>!t.completedAtISO).length;
+  const doneTasks = state.tasks.filter(t=>!!t.completedAtISO).length;
+  const assetsCount = state.assets.filter(a=>!a.archivedAtISO).length;
+
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+  const purchasesThisMonth = state.purchases.filter(p=>{
+    const t = new Date(p.dateISO || p.createdAtISO || 0).getTime();
+    return t >= monthStart;
+  });
+  const monthSpend = purchasesThisMonth.reduce((sum,p)=> sum + (Number(p.amountNok)||0), 0);
 
   const shortcuts = (state.settings.shortcuts || []).map(sc=>{
     if(sc.id === "yr"){
@@ -338,31 +441,57 @@ function pageForside(state){
     </div>
   ` : `<div class="muted">Ingen snarveier enda.</div>`;
 
-  const liveHtml = running ? `
-    <div class="card">
-      <div class="h2">Pågående jobb</div>
-      <div class="muted">${escapeHtml(running.customer)} – ${escapeHtml(running.jobType)}</div>
-      <div class="space"></div>
-      <a class="btn primary" href="#/jobb">Åpne jobbklokke</a>
-    </div>
-    <div class="space"></div>
-  ` : "";
-
   const node = h(`
     <div>
-      ${liveHtml}
-
       <div class="card">
-        <div class="h2">Snarveier</div>
-        ${scHtml}
+        <div class="cardHeader">
+          <div>
+            <div class="h2">Oversikt</div>
+            <div class="muted">Alt viktig på ett sted</div>
+          </div>
+          ${running ? `<span class="pill ok">Jobb pågår</span>` : `<span class="pill">Ingen jobb nå</span>`}
+        </div>
         <div class="space"></div>
-        <a class="badge" href="#/innstillinger">Rediger snarveier</a>
+
+        <div class="grid3">
+          ${statCard("Åpne oppgaver", String(openTasks), openTasks ? "Husk å sjekke" : "Ser bra ut", openTasks ? "warn" : "ok")}
+          ${statCard("Maskiner/utstyr", String(assetsCount), assetsCount ? "Registrert" : "Legg til", assetsCount ? "ok" : "")}
+          ${statCard("Innkjøp denne mnd", `${Math.round(monthSpend)} NOK`, `${purchasesThisMonth.length} stk`, purchasesThisMonth.length ? "ok" : "")}
+        </div>
+
+        <div class="space"></div>
+        <div class="grid2">
+          <a class="btn primary" href="#/oppgaver?new=1">+ Ny oppgave</a>
+          <a class="btn primary" href="#/jobb">${running ? "Åpne jobbklokke" : "Start jobbklokke"}</a>
+        </div>
       </div>
 
       <div class="space"></div>
 
       <div class="card">
-        <div class="h2">Siste aktiviteter</div>
+        <div class="cardHeader">
+          <div>
+            <div class="h2">Snarveier</div>
+            <div class="muted">Egne lenker + yr.no-sted</div>
+          </div>
+          <a class="badge" href="#/innstillinger">Rediger</a>
+        </div>
+        <div class="space"></div>
+        ${scHtml}
+      </div>
+
+      <div class="space"></div>
+
+      <div class="card">
+        <div class="cardHeader">
+          <div>
+            <div class="h2">Siste aktiviteter</div>
+            <div class="muted">Trykk for detaljer</div>
+          </div>
+          <a class="badge" href="#/aktivitetlogg">Logg</a>
+        </div>
+
+        <div class="space"></div>
         ${activities.length ? `
           <div class="list">
             ${activities.map(a=>`
@@ -385,10 +514,10 @@ function pageForside(state){
       <div class="card">
         <div class="h2">Hurtig</div>
         <div class="grid2">
-          <a class="btn" href="#/oppgaver?new=1">Ny oppgave</a>
-          <a class="btn" href="#/jobb">Jobbklokke</a>
           <a class="btn" href="#/maskiner">Maskiner/utstyr</a>
           <a class="btn" href="#/innkjop">Innkjøp</a>
+          <a class="btn" href="#/backup">Backup</a>
+          <a class="btn" href="#/raadgiver">Rådgiver (låst)</a>
         </div>
       </div>
     </div>
@@ -419,6 +548,56 @@ function pageAktivitet(state, params){
   return { title:"Aktivitet", subtitle:"Detaljer", node };
 }
 
+function pageAktivitetLogg(state, params){
+  const q = (params.get("q")||"").trim().toLowerCase();
+  const list = state.activities
+    .filter(a=>!a.deletedAt)
+    .filter(a=> !q ? true : (`${a.type} ${a.title} ${a.description||""}`).toLowerCase().includes(q))
+    .slice(0, 250);
+
+  const node = h(`
+    <div>
+      <div class="card">
+        <div class="cardHeader">
+          <div>
+            <div class="h2">Aktivitetslogg</div>
+            <div class="muted">Søk i alt (inntil 250 siste)</div>
+          </div>
+          <a class="badge" href="#/forside">Lukk</a>
+        </div>
+        <div class="space"></div>
+        <input class="input" id="q" placeholder="Søk..." value="${escapeHtml(params.get("q")||"")}" />
+      </div>
+
+      <div class="space"></div>
+
+      <div class="card">
+        ${list.length ? `
+          <div class="list">
+            ${list.map(a=>`
+              <a class="item" style="text-decoration:none" href="#/aktivitet?id=${a.id}">
+                <div><b>${escapeHtml(a.title)}</b></div>
+                <div class="muted">${escapeHtml(a.type)} • ${fmtDateTime(a.createdAt)}</div>
+              </a>
+            `).join("")}
+          </div>
+        ` : `<div class="muted">Ingen treff.</div>`}
+      </div>
+    </div>
+  `);
+
+  setTimeout(()=>{
+    $("#q", node)?.addEventListener("input", (e)=>{
+      const v = e.target.value;
+      const p = new URLSearchParams(params);
+      if(v) p.set("q", v); else p.delete("q");
+      location.hash = `#/aktivitetlogg?${p.toString()}`;
+    });
+  },0);
+
+  return { title:"Aktivitetslogg", subtitle:"Søkbar historikk", node };
+}
+
 /* ----- Tasks ----- */
 function taskSheet(){
   return `
@@ -434,15 +613,16 @@ function taskSheet(){
       <label class="muted">Kommentar</label><div class="space"></div>
       <textarea class="input" id="t_desc" placeholder="Valgfritt"></textarea>
       <div class="space"></div>
-      <a class="btn primary" href="javascript:void(0)" id="t_save">Lagre</a>
-      <div class="space"></div>
-      <a class="btn" href="#/oppgaver">Avbryt</a>
+      <div class="grid2">
+        <a class="btn primary" href="javascript:void(0)" id="t_save">Lagre</a>
+        <a class="btn" href="#/oppgaver">Avbryt</a>
+      </div>
     </div>
   `;
 }
 
 function pageOppgaver(state, params){
-  const view = params.get("view") || "apne"; // apne|ferdige
+  const view = params.get("view") || "apne";
   const creating = params.get("new") === "1";
   const q = (params.get("q") || "").trim().toLowerCase();
 
@@ -493,9 +673,7 @@ function pageOppgaver(state, params){
             `).join("")}
           </div>
         ` : `<div class="muted">Ingen oppgaver her.</div>`}
-        <div class="muted" style="margin-top:10px">
-          Sletting er skjult med vilje. Oppgaver flyttes til “Ferdige” og er søkbare.
-        </div>
+        <div class="muted" style="margin-top:10px">Oppgaver slettes ikke lett. Fullfør → “Ferdige” (søkbar).</div>
       </div>
 
       ${creating ? taskSheet() : ""}
@@ -503,8 +681,7 @@ function pageOppgaver(state, params){
   `);
 
   setTimeout(()=>{
-    const inp = $("#q", node);
-    inp?.addEventListener("input", (e)=>{
+    $("#q", node)?.addEventListener("input", (e)=>{
       const v = e.target.value;
       const p = new URLSearchParams(params);
       if(v) p.set("q", v); else p.delete("q");
@@ -518,9 +695,8 @@ function pageOppgaver(state, params){
         const s = loadState();
         const t = s.tasks.find(x=>x.id===id);
         if(!t) return;
-        const now = nowISO();
         if(act==="done"){
-          t.completedAtISO = now;
+          t.completedAtISO = nowISO();
           addActivity(s, { type:"TODO_FERDIG", title:`Oppgave ferdig: ${t.title}`, refs:{ taskId: t.id }});
         }else if(act==="reopen"){
           t.completedAtISO = null;
@@ -534,8 +710,7 @@ function pageOppgaver(state, params){
     if(creating){
       $("#bd")?.addEventListener("click", ()=> nav("/oppgaver"));
       const d = new Date(); const pad=(n)=>String(n).padStart(2,"0");
-      const dateEl = $("#t_date");
-      if(dateEl) dateEl.value = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+      $("#t_date") && ($("#t_date").value = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`);
 
       $("#t_save")?.addEventListener("click", ()=>{
         const title = $("#t_title")?.value?.trim();
@@ -582,9 +757,10 @@ function workEditSheet(session){
       <label class="muted">Notat</label><div class="space"></div>
       <textarea class="input" id="ws_notes">${escapeHtml(session.notes||"")}</textarea>
       <div class="space"></div>
-      <a class="btn primary" href="javascript:void(0)" id="ws_save">Lagre</a>
-      <div class="space"></div>
-      <a class="btn" href="#/jobb">Avbryt</a>
+      <div class="grid2">
+        <a class="btn primary" href="javascript:void(0)" id="ws_save">Lagre</a>
+        <a class="btn" href="#/jobb">Avbryt</a>
+      </div>
     </div>
   `;
 }
@@ -612,7 +788,7 @@ function pageJobb(state, params){
               <div><b>${escapeHtml(running.customer)}</b> – ${escapeHtml(running.jobType)}</div>
               <div class="muted">Startet: ${fmtDateTime(running.startedAtISO)}</div>
             </div>
-            <span class="pill" id="elapsed">00:00:00</span>
+            <span class="pill ok" id="elapsed">00:00:00</span>
           </div>
           <div class="space"></div>
           <a class="btn danger" href="javascript:void(0)" id="stop">Stopp</a>
@@ -716,7 +892,7 @@ function pageJobb(state, params){
   return { title:"Jobb", subtitle:"Live timer + redigering", node };
 }
 
-/* ----- More ----- */
+/* ----- Mer ----- */
 function pageMer(){
   const node = h(`
     <div>
@@ -729,17 +905,21 @@ function pageMer(){
           <a class="btn" href="#/innstillinger">Innstillinger</a>
         </div>
       </div>
+
       <div class="space"></div>
+
       <div class="card">
-        <div class="h2">Kommende</div>
-        <div class="muted">Neste: egne “service/reparasjon”-registreringer per maskin, og sprøytejournal-wizard.</div>
+        <div class="h2">Rådgiver</div>
+        <div class="muted">Her skal alle fiktive beregninger ligge. Modulen er opprettet, men låst til vi planlegger regelverk/innhold.</div>
+        <div class="space"></div>
+        <a class="btn" href="#/raadgiver">Åpne (låst)</a>
       </div>
     </div>
   `);
   return { title:"Mer", subtitle:"Alt samlet", node };
 }
 
-/* ----- Assets (Machines/Equipment) ----- */
+/* ----- Maskiner/utstyr + Service ----- */
 function assetSheet(){
   return `
     <div class="sheet-backdrop" id="bd"></div>
@@ -772,9 +952,43 @@ function assetSheet(){
       <textarea class="input" id="a_notes" placeholder="Valgfritt"></textarea>
 
       <div class="space"></div>
-      <a class="btn primary" href="javascript:void(0)" id="a_save">Lagre</a>
+      <div class="grid2">
+        <a class="btn primary" href="javascript:void(0)" id="a_save">Lagre</a>
+        <a class="btn" href="#/maskiner">Avbryt</a>
+      </div>
+    </div>
+  `;
+}
+
+function serviceSheet(state, assetId){
+  const asset = state.assets.find(a=>a.id===assetId);
+  return `
+    <div class="sheet-backdrop" id="bd"></div>
+    <div class="sheet">
+      <div class="h2">Service / reparasjon</div>
+      <div class="muted">${asset ? escapeHtml(asset.name) : ""}</div>
       <div class="space"></div>
-      <a class="btn" href="#/maskiner">Avbryt</a>
+
+      <label class="muted">Dato</label><div class="space"></div>
+      <input class="input" id="s_date" type="date" />
+
+      <div class="space"></div>
+      <label class="muted">Kategori</label><div class="space"></div>
+      <input class="input" id="s_cat" placeholder="f.eks Oljeskift / Reparasjon" />
+
+      <div class="space"></div>
+      <label class="muted">Kostnad (NOK)</label><div class="space"></div>
+      <input class="input" id="s_cost" type="number" placeholder="0" />
+
+      <div class="space"></div>
+      <label class="muted">Notat</label><div class="space"></div>
+      <textarea class="input" id="s_notes" placeholder="Valgfritt"></textarea>
+
+      <div class="space"></div>
+      <div class="grid2">
+        <a class="btn primary" href="javascript:void(0)" id="s_save">Lagre</a>
+        <a class="btn" href="#/maskiner?id=${assetId}">Avbryt</a>
+      </div>
     </div>
   `;
 }
@@ -795,11 +1009,25 @@ function exportAssetHistoryJSON(state, asset){
   const rows = state.activities.filter(a=>!a.deletedAt && a.refs?.assetId === asset.id).slice().reverse();
   downloadText(`maskin-historikk-${safeFilename(asset.name)}.json`, JSON.stringify(rows, null, 2), "application/json");
 }
+function exportAssetServicesCSV(state, asset){
+  const rows = state.services
+    .filter(s=>s.assetId===asset.id)
+    .slice()
+    .sort((a,b)=> (a.dateISO||"").localeCompare(b.dateISO||""))
+    .map(s=>({
+      dato: s.dateISO,
+      kategori: s.category,
+      kostnad_nok: s.costNok,
+      notat: s.notes || ""
+    }));
+  downloadText(`service-${safeFilename(asset.name)}.csv`, toCSV(rows), "text/csv");
+}
 
 function pageMaskiner(state, params){
   const creating = params.get("new")==="1";
   const id = params.get("id");
   const q = (params.get("q")||"").trim().toLowerCase();
+  const addServiceFor = params.get("service"); // assetId
 
   const list = state.assets
     .filter(a=>!a.archivedAtISO)
@@ -807,15 +1035,17 @@ function pageMaskiner(state, params){
     .sort((a,b)=> (a.name||"").localeCompare(b.name||""));
 
   const current = id ? state.assets.find(a=>a.id===id) : null;
+
   const history = current ? state.activities.filter(x=>!x.deletedAt && x.refs?.assetId===current.id).slice(0, 40) : [];
+  const services = current ? state.services.filter(s=>s.assetId===current.id).slice().sort((a,b)=> (b.dateISO||"").localeCompare(a.dateISO||"")).slice(0, 25) : [];
 
   const node = h(`
     <div>
       <div class="card">
-        <div class="row" style="justify-content:space-between;">
+        <div class="cardHeader">
           <div>
             <div class="h2">Maskiner / utstyr</div>
-            <div class="muted">Historikk per maskin + eksport</div>
+            <div class="muted">Historikk + service + eksport</div>
           </div>
           <a class="btn small primary" href="#/maskiner?new=1">+ Ny</a>
         </div>
@@ -847,23 +1077,49 @@ function pageMaskiner(state, params){
       ${current ? `
         <div class="space"></div>
         <div class="card">
-          <div class="row" style="justify-content:space-between;">
+          <div class="cardHeader">
             <div>
               <div class="h2">${escapeHtml(current.name)}</div>
               <div class="muted">${escapeHtml(current.kind)} • ${escapeHtml(current.brandModel||"")}</div>
             </div>
             <a class="badge" href="#/maskiner">Lukk</a>
           </div>
+
           ${current.notes ? `<div class="muted" style="margin-top:8px">${escapeHtml(current.notes)}</div>`:""}
 
           <div class="space"></div>
           <div class="grid2">
-            <a class="btn" href="javascript:void(0)" id="exCsv">Eksport CSV</a>
-            <a class="btn" href="javascript:void(0)" id="exJson">Eksport JSON</a>
+            <a class="btn" href="javascript:void(0)" id="exCsv">Eksport historikk CSV</a>
+            <a class="btn" href="javascript:void(0)" id="exJson">Eksport historikk JSON</a>
           </div>
 
           <div class="space"></div>
-          <div class="h2">Historikk</div>
+          <div class="grid2">
+            <a class="btn primary" href="#/maskiner?id=${current.id}&service=${current.id}">+ Service/Reparasjon</a>
+            <a class="btn" href="javascript:void(0)" id="exSvc">Eksport service CSV</a>
+          </div>
+
+          <div class="space"></div>
+          <div class="h2">Service / reparasjon</div>
+          ${services.length ? `
+            <div class="list">
+              ${services.map(s=>`
+                <div class="item">
+                  <div class="row" style="justify-content:space-between;">
+                    <div>
+                      <div><b>${escapeHtml(s.category || "Service")}</b></div>
+                      <div class="muted">${s.dateISO ? fmtDate(s.dateISO) : ""} • ${Math.round(Number(s.costNok||0))} NOK</div>
+                    </div>
+                    <span class="badge">OK</span>
+                  </div>
+                  ${s.notes ? `<div class="muted" style="margin-top:6px">${escapeHtml(s.notes)}</div>`:""}
+                </div>
+              `).join("")}
+            </div>
+          ` : `<div class="muted">Ingen service registrert enda.</div>`}
+
+          <div class="space"></div>
+          <div class="h2">Historikk (aktiviteter)</div>
           ${history.length ? `
             <div class="list">
               ${history.map(hh=>`
@@ -874,14 +1130,11 @@ function pageMaskiner(state, params){
               `).join("")}
             </div>
           ` : `<div class="muted">Ingen aktiviteter knyttet til denne enda.</div>`}
-          <div class="muted" style="margin-top:10px">
-            Foreløpig knyttes maskin-aktivitet via Innkjøp (velg maskin).
-            Neste steg: egne service/reparasjon-registreringer direkte på maskin.
-          </div>
         </div>
       ` : ""}
 
       ${creating ? assetSheet() : ""}
+      ${addServiceFor ? serviceSheet(state, addServiceFor) : ""}
     </div>
   `);
 
@@ -915,13 +1168,45 @@ function pageMaskiner(state, params){
     if(current){
       $("#exCsv")?.addEventListener("click", ()=> exportAssetHistoryCSV(loadState(), current));
       $("#exJson")?.addEventListener("click", ()=> exportAssetHistoryJSON(loadState(), current));
+      $("#exSvc")?.addEventListener("click", ()=> exportAssetServicesCSV(loadState(), current));
+    }
+
+    if(addServiceFor){
+      $("#bd")?.addEventListener("click", ()=> nav(`/maskiner?id=${addServiceFor}`));
+      const d = new Date(); const pad=(n)=>String(n).padStart(2,"0");
+      $("#s_date") && ($("#s_date").value = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`);
+
+      $("#s_save")?.addEventListener("click", ()=>{
+        const s = loadState();
+        const assetId = addServiceFor;
+        const dateISO = toISOFromDateInput($("#s_date")?.value) || nowISO();
+        const category = $("#s_cat")?.value?.trim() || "Service";
+        const costNok = Number($("#s_cost")?.value || 0);
+        const notes = $("#s_notes")?.value?.trim() || "";
+
+        const asset = s.assets.find(a=>a.id===assetId);
+        if(!asset){ alert("Fant ikke maskin"); return; }
+
+        const svc = newService({assetId, dateISO, category, costNok, notes});
+        s.services.push(svc);
+
+        addActivity(s, {
+          type:"SERVICE",
+          title:`Service: ${asset.name} – ${category}`,
+          description:`${fmtDate(dateISO)} • ${Math.round(costNok)} NOK${notes ? ` • ${notes}`:""}`,
+          refs:{ assetId, serviceId: svc.id }
+        });
+
+        saveState(s);
+        nav(`/maskiner?id=${assetId}`);
+      });
     }
   }, 0);
 
-  return { title:"Maskiner/utstyr", subtitle:"Register + historikk + eksport", node };
+  return { title:"Maskiner/utstyr", subtitle:"Service + historikk + eksport", node };
 }
 
-/* ----- Purchases ----- */
+/* ----- Innkjøp ----- */
 function purchaseSheet(state){
   const assets = state.assets.filter(a=>!a.archivedAtISO).sort((a,b)=> (a.name||"").localeCompare(b.name||""));
   return `
@@ -960,13 +1245,13 @@ function purchaseSheet(state){
       <textarea class="input" id="p_notes" placeholder="Valgfritt"></textarea>
 
       <div class="space"></div>
-      <a class="btn primary" href="javascript:void(0)" id="p_save">Lagre</a>
-      <div class="space"></div>
-      <a class="btn" href="#/innkjop">Avbryt</a>
+      <div class="grid2">
+        <a class="btn primary" href="javascript:void(0)" id="p_save">Lagre</a>
+        <a class="btn" href="#/innkjop">Avbryt</a>
+      </div>
     </div>
   `;
 }
-
 function exportPurchasesCSV(state){
   const rows = state.purchases.slice().sort((a,b)=> (a.dateISO||"").localeCompare(b.dateISO||"")).map(p=>({
     dato: p.dateISO,
@@ -982,7 +1267,6 @@ function exportPurchasesCSV(state){
 function exportPurchasesJSON(state){
   downloadText(`innkjop-${new Date().toISOString().slice(0,10)}.json`, JSON.stringify(state.purchases, null, 2), "application/json");
 }
-
 function pageInnkjop(state, params){
   const creating = params.get("new")==="1";
   const q = (params.get("q")||"").trim().toLowerCase();
@@ -991,23 +1275,25 @@ function pageInnkjop(state, params){
     .filter(p=> !q ? true : (`${p.supplier} ${p.category} ${p.notes||""}`).toLowerCase().includes(q))
     .slice()
     .sort((a,b)=> (b.dateISO||"").localeCompare(a.dateISO||""))
-    .slice(0, 60);
+    .slice(0, 80);
 
   const node = h(`
     <div>
       <div class="card">
-        <div class="row" style="justify-content:space-between;">
+        <div class="cardHeader">
           <div>
             <div class="h2">Innkjøp</div>
             <div class="muted">Historikk + eksport</div>
           </div>
           <a class="btn small primary" href="#/innkjop?new=1">+ Ny</a>
         </div>
+
         <div class="space"></div>
         <div class="grid2">
           <a class="btn" href="javascript:void(0)" id="exCsv">Eksport CSV</a>
           <a class="btn" href="javascript:void(0)" id="exJson">Eksport JSON</a>
         </div>
+
         <div class="space"></div>
         <input class="input" id="q" placeholder="Søk..." value="${escapeHtml(params.get("q")||"")}" />
       </div>
@@ -1025,7 +1311,7 @@ function pageInnkjop(state, params){
                   <div class="row" style="justify-content:space-between;">
                     <div>
                       <div><b>${escapeHtml(p.supplier || "Innkjøp")}</b> – ${escapeHtml(p.category || "")}</div>
-                      <div class="muted">${p.dateISO ? fmtDate(p.dateISO) : ""} • ${Number(p.amountNok||0).toFixed(0)} NOK ${assetName ? " • " + escapeHtml(assetName) : ""}</div>
+                      <div class="muted">${p.dateISO ? fmtDate(p.dateISO) : ""} • ${Math.round(Number(p.amountNok||0))} NOK ${assetName ? " • " + escapeHtml(assetName) : ""}</div>
                     </div>
                     ${p.receiptUrl ? `<a class="badge" target="_blank" rel="noopener" href="${escapeHtml(p.receiptUrl)}">Kvittering</a>` : `<span class="badge">—</span>`}
                   </div>
@@ -1055,8 +1341,7 @@ function pageInnkjop(state, params){
     if(creating){
       $("#bd")?.addEventListener("click", ()=> nav("/innkjop"));
       const d = new Date(); const pad=(n)=>String(n).padStart(2,"0");
-      const dateEl = $("#p_date");
-      if(dateEl) dateEl.value = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+      $("#p_date") && ($("#p_date").value = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`);
 
       $("#p_save")?.addEventListener("click", ()=>{
         const supplier = $("#p_supplier")?.value?.trim() || "";
@@ -1077,7 +1362,7 @@ function pageInnkjop(state, params){
         addActivity(s, {
           type:"INNKJOP_NY",
           title:`Innkjøp: ${supplier || "Ukjent"} – ${category || ""}`.trim(),
-          description:`Beløp: ${Number(amount||0).toFixed(0)} NOK${assetName ? ` • Maskin: ${assetName}` : ""}${notes ? ` • ${notes}` : ""}`,
+          description:`Beløp: ${Math.round(Number(amount||0))} NOK${assetName ? ` • Maskin: ${assetName}` : ""}${notes ? ` • ${notes}` : ""}`,
           refs:{ purchaseId: purchase.id, assetId: assetId || undefined }
         });
 
@@ -1090,7 +1375,7 @@ function pageInnkjop(state, params){
   return { title:"Innkjøp", subtitle:"Historikk + eksport", node };
 }
 
-/* ----- Settings ----- */
+/* ----- Innstillinger ----- */
 function shortcutSheet(){
   return `
     <div class="sheet-backdrop" id="bd"></div>
@@ -1102,9 +1387,10 @@ function shortcutSheet(){
       <label class="muted">Lenke (URL)</label><div class="space"></div>
       <input class="input" id="sc_url" placeholder="https://..." />
       <div class="space"></div>
-      <a class="btn primary" href="javascript:void(0)" id="sc_save">Lagre</a>
-      <div class="space"></div>
-      <a class="btn" href="#/innstillinger">Avbryt</a>
+      <div class="grid2">
+        <a class="btn primary" href="javascript:void(0)" id="sc_save">Lagre</a>
+        <a class="btn" href="#/innstillinger">Avbryt</a>
+      </div>
     </div>
   `;
 }
@@ -1136,27 +1422,16 @@ function pageInnstillinger(state, params){
       <div class="space"></div>
 
       <div class="card">
-        <div class="h2">Bakgrunnsbilde</div>
-        <div class="muted">Lim inn en bilde-URL (kan forbedres senere).</div>
-        <div class="space"></div>
-        <input class="input" id="bgUrl" placeholder="https://..." value="${escapeHtml(state.settings.backgroundUrl || "")}" />
-        <div class="space"></div>
-        <a class="btn primary" href="javascript:void(0)" id="saveBg">Lagre</a>
-        <div class="space"></div>
-        <a class="btn danger" href="javascript:void(0)" id="clearBg">Fjern</a>
-      </div>
-
-      <div class="space"></div>
-
-      <div class="card">
         <div class="row" style="justify-content:space-between;">
           <div>
             <div class="h2">Snarveier</div>
-            <div class="muted">Lag egne weblinker (yr.no oppdateres automatisk).</div>
+            <div class="muted">Egne weblinker (yr.no oppdateres automatisk)</div>
           </div>
           <a class="btn small primary" href="#/innstillinger?shortcut=1">+ Ny</a>
         </div>
+
         <div class="space"></div>
+
         ${shortcuts.length ? `
           <div class="list">
             ${shortcuts.map(sc=>`
@@ -1166,7 +1441,7 @@ function pageInnstillinger(state, params){
                     <div><b>${escapeHtml(sc.title)}</b> ${sc.id==="yr" ? `<span class="badge">yr.no</span>`:""}</div>
                     <div class="muted">${escapeHtml(sc.url)}</div>
                   </div>
-                  ${sc.id==="yr" ? `<span class="badge">Fast</span>` : `<a class="badge" href="javascript:void(0)" data-del="${escapeHtml(sc.id)}">Fjern</a>`}
+                  ${sc.id==="yr" ? `<span class="badge lock">Fast</span>` : `<a class="badge" href="javascript:void(0)" data-del="${escapeHtml(sc.id)}">Fjern</a>`}
                 </div>
               </div>
             `).join("")}
@@ -1202,24 +1477,6 @@ function pageInnstillinger(state, params){
       nav("/forside");
     });
 
-    $("#saveBg")?.addEventListener("click", ()=>{
-      const s = loadState();
-      s.settings.backgroundUrl = $("#bgUrl")?.value?.trim() || "";
-      addActivity(s, { type:"INNST_SAVE", title:"Oppdatert bakgrunn", refs:{} });
-      saveState(s);
-      applyBackground();
-      nav("/forside");
-    });
-
-    $("#clearBg")?.addEventListener("click", ()=>{
-      const s = loadState();
-      s.settings.backgroundUrl = "";
-      addActivity(s, { type:"INNST_SAVE", title:"Fjernet bakgrunn", refs:{} });
-      saveState(s);
-      applyBackground();
-      nav("/forside");
-    });
-
     node.querySelectorAll("[data-del]").forEach(el=>{
       el.addEventListener("click", ()=>{
         const id = el.getAttribute("data-del");
@@ -1248,7 +1505,7 @@ function pageInnstillinger(state, params){
     }
   }, 0);
 
-  return { title:"Innstillinger", subtitle:"Gård, vær, snarveier, bakgrunn", node };
+  return { title:"Innstillinger", subtitle:"Gård, vær, snarveier", node };
 }
 
 /* ----- Backup ----- */
@@ -1283,28 +1540,43 @@ function pageBackup(){
   setTimeout(()=>{
     const ta = $("#bkText");
     $("#btnExport")?.addEventListener("click", ()=> { ta.value = exportJSON(); });
-
     $("#btnDownload")?.addEventListener("click", ()=>{
       downloadText(`farmapp-backup-${new Date().toISOString().slice(0,10)}.json`, exportJSON(), "application/json");
     });
-
     $("#bkFile")?.addEventListener("change", async (e)=>{
       const f = e.target.files?.[0];
       if(!f) return;
-      const txt = await f.text();
-      ta.value = txt;
+      ta.value = await f.text();
     });
-
     $("#btnImport")?.addEventListener("click", ()=>{
       if(!confirm("Import overskriver alt lokalt. Fortsette?")) return;
-      const txt = ta.value.trim();
-      importJSON(txt);
+      importJSON(ta.value.trim());
       alert("Import OK");
       nav("/forside");
     });
   }, 0);
 
   return { title:"Backup", subtitle:"Trygghet først", node };
+}
+
+/* ----- Rådgiver (låst placeholder) ----- */
+function pageRaadgiver(){
+  const node = h(`
+    <div>
+      <div class="card">
+        <div class="h2">Rådgiver</div>
+        <div class="muted">
+          Denne modulen er bevisst låst.
+          Her skal alle “fiktive beregninger” ligge, men vi må planlegge nøye (regelverk, sperrer, datagrunnlag) før den kan aktiveres.
+        </div>
+        <div class="space"></div>
+        <div class="pill warn">Status: Låst</div>
+        <div class="space"></div>
+        <a class="btn" href="#/forside">Tilbake</a>
+      </div>
+    </div>
+  `);
+  return { title:"Rådgiver", subtitle:"Planlagt – ikke aktiv", node };
 }
 
 /* =======================
@@ -1326,6 +1598,8 @@ function render(){
     else if(r.path === "/innstillinger") out = pageInnstillinger(state, r.params);
     else if(r.path === "/backup") out = pageBackup(state);
     else if(r.path === "/aktivitet") out = pageAktivitet(state, r.params);
+    else if(r.path === "/aktivitetlogg") out = pageAktivitetLogg(state, r.params);
+    else if(r.path === "/raadgiver") out = pageRaadgiver();
     else { nav("/forside"); return; }
 
     const app = $("#app");
@@ -1340,4 +1614,4 @@ window.addEventListener("hashchange", render);
 render();
 </script>
 </body>
-</html> 
+</html>
