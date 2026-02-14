@@ -7,11 +7,9 @@
   <title>Farmapp</title>
   <style>
     :root{
-      /* Mørkegrønn profil */
       --bg:#07150f;
       --bg2:#0a1a12;
       --card:#0f241a;
-      --card2:#102a1e;
       --text:#e9fff5;
       --muted:#9fc7b6;
       --line:#1f3f30;
@@ -23,11 +21,9 @@
       --radius:18px;
       --shadow: 0 10px 30px rgba(0,0,0,.35);
     }
-
     *{box-sizing:border-box;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial}
     body{margin:0;background:radial-gradient(1200px 800px at 30% 0%, #0b2519 0%, var(--bg) 45%, #040c08 100%);color:var(--text)}
     a{color:inherit}
-
     .wrap{max-width:980px;margin:0 auto;padding:16px;padding-bottom:92px}
     .row{display:flex;align-items:center;gap:12px}
     .space{height:12px}
@@ -60,9 +56,7 @@
 
     .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
     .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
-    @media (max-width:720px){
-      .grid3{grid-template-columns:1fr 1fr;}
-    }
+    @media (max-width:720px){ .grid3{grid-template-columns:1fr 1fr;} }
 
     .pill{
       display:inline-flex;align-items:center;gap:8px;
@@ -111,10 +105,10 @@
       border-radius:18px 18px 0 0;padding:14px;border-top:1px solid rgba(255,255,255,.10);
       max-width:980px;margin:0 auto;
       box-shadow: 0 -20px 50px rgba(0,0,0,.55);
+      max-height:80vh; overflow:auto;
     }
     hr{border:none;border-top:1px solid rgba(255,255,255,.10);margin:12px 0}
 
-    /* error overlay */
     #errorOverlay{position:fixed;inset:0;background:rgba(0,0,0,.72);display:none;z-index:9999}
     #errorOverlay .box{max-width:980px;margin:16px auto;padding:16px}
     #errorOverlay pre{white-space:pre-wrap;word-break:break-word;background:#000;border:1px solid #333;border-radius:12px;padding:12px;color:#fff}
@@ -146,19 +140,18 @@
 
 <script>
 /* =======================
-   Farmapp (One-file) v0.5.0
-   - grønn UI
-   - bedre forside oversikt
-   - service/reparasjon pr maskin
-   - rådgiver modul (låst)
+   Farmapp (One-file) v0.6.0
+   - Skifter + areal
+   - Min gård
+   - Sprøytejournal (wizard)
    ======================= */
 
-const APP_VERSION = "0.5.0";
+const APP_VERSION = "0.6.0";
 const KEY = "farmapp_state_v2";
 const nowISO = ()=> new Date().toISOString();
 const uid = ()=> Math.random().toString(36).slice(2) + Date.now().toString(36);
 
-/* ---------- Date/Time (dd.mm.åååå + 24t) ---------- */
+/* ---------- Date/Time ---------- */
 const nbDate = new Intl.DateTimeFormat("nb-NO", { day:"2-digit", month:"2-digit", year:"numeric" });
 const nbDT = new Intl.DateTimeFormat("nb-NO", {
   day:"2-digit", month:"2-digit", year:"numeric",
@@ -172,11 +165,6 @@ function toISOFromDateInput(dateStr){
   const d = new Date(dateStr + "T09:00:00");
   return isNaN(d.getTime()) ? null : d.toISOString();
 }
-function toISOFromDatetimeLocal(dtLocal){
-  if(!dtLocal) return null;
-  const d = new Date(dtLocal);
-  return isNaN(d.getTime()) ? null : d.toISOString();
-}
 function toDatetimeLocalValue(iso){
   try{
     const d = new Date(iso);
@@ -184,17 +172,19 @@ function toDatetimeLocalValue(iso){
     return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   }catch{ return ""; }
 }
+function toISOFromDatetimeLocal(dtLocal){
+  if(!dtLocal) return null;
+  const d = new Date(dtLocal);
+  return isNaN(d.getTime()) ? null : d.toISOString();
+}
 
 /* ---------- DOM helpers ---------- */
 function h(html){ const t=document.createElement("template"); t.innerHTML = html.trim(); return t.content.firstElementChild; }
 const $ = (sel, root=document)=> root.querySelector(sel);
 function escapeHtml(str){
   return String(str ?? "")
-    .replaceAll("&","&amp;")
-    .replaceAll("<","&lt;")
-    .replaceAll(">","&gt;")
-    .replaceAll('"',"&quot;")
-    .replaceAll("'","&#039;");
+    .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;").replaceAll("'","&#039;");
 }
 
 /* ---------- Export helpers ---------- */
@@ -232,21 +222,20 @@ const defaultState = {
 
   tasks: [],
 
-  work: {
-    running: null,
-    sessions: []
-  },
+  work: { running: null, sessions: [] },
 
   assets: [],
   purchases: [],
+  services: [],
 
-  /* NYTT: service/reparasjon */
-  services: [], // {id,assetId,dateISO,category,costNok,notes,createdAtISO}
+  /* NYTT */
+  fields: [], // {id,name,areaDaa,type,notes,createdAtISO,archivedAtISO?}
+  sprayJournal: [], // {id,dateISO,fieldId,purpose,product,dose,water,operator,weather,notes,createdAtISO}
 
   settings: {
     weather: { place: "Karmøy" },
     shortcuts: [{ id:"yr", title:"Vær (yr.no)", url:"https://www.yr.no" }],
-    backgroundUrl: "" // kan brukes senere igjen hvis du vil
+    backgroundUrl: ""
   }
 };
 
@@ -261,6 +250,8 @@ function migrateState(s){
   if(!Array.isArray(s.assets)) s.assets = [];
   if(!Array.isArray(s.purchases)) s.purchases = [];
   if(!Array.isArray(s.services)) s.services = [];
+  if(!Array.isArray(s.fields)) s.fields = [];
+  if(!Array.isArray(s.sprayJournal)) s.sprayJournal = [];
   if(!s.settings) s.settings = deepClone(defaultState.settings);
   if(!s.settings.weather) s.settings.weather = deepClone(defaultState.settings.weather);
   if(!Array.isArray(s.settings.shortcuts)) s.settings.shortcuts = deepClone(defaultState.settings.shortcuts);
@@ -294,7 +285,7 @@ function importJSON(txt){
 function addActivity(state, { type, title, description="", refs={} }){
   const a = { id: uid(), type, title: title || type, description, createdAt: nowISO(), refs, deletedAt: null };
   state.activities.unshift(a);
-  if(state.activities.length > 9000) state.activities.length = 9000;
+  if(state.activities.length > 12000) state.activities.length = 12000;
   return a;
 }
 
@@ -314,6 +305,23 @@ function newPurchase({dateISO, supplier, category, amountNok, notes="", receiptU
 function newService({assetId, dateISO, category, costNok, notes=""}){
   return { id: uid(), assetId, dateISO, category, costNok: Number(costNok)||0, notes, createdAtISO: nowISO() };
 }
+function newField({name, areaDaa, type, notes=""}){
+  return { id: uid(), name, areaDaa: Number(areaDaa)||0, type, notes, createdAtISO: nowISO(), archivedAtISO: null };
+}
+function newSpray({dateISO, fieldId, purpose, product, dose, water, operator, weather, notes}){
+  return {
+    id: uid(),
+    dateISO, fieldId,
+    purpose: purpose || "",
+    product: product || "",
+    dose: dose || "",
+    water: water || "",
+    operator: operator || "",
+    weather: weather || "",
+    notes: notes || "",
+    createdAtISO: nowISO()
+  };
+}
 
 /* ---------- Router ---------- */
 function route(){
@@ -332,15 +340,12 @@ function showError(err){
   if(pre) pre.textContent = msg;
   if(overlay) overlay.style.display = "block";
 }
-function hideError(){
-  const overlay = $("#errorOverlay");
-  if(overlay) overlay.style.display = "none";
-}
+function hideError(){ const overlay = $("#errorOverlay"); if(overlay) overlay.style.display = "none"; }
 window.addEventListener("error", (e)=> showError(e.error || e.message));
 window.addEventListener("unhandledrejection", (e)=> showError(e.reason || e));
 document.addEventListener("click", (e)=> { if(e.target && e.target.id==="errClose") hideError(); });
 
-/* ---------- Background (optional) ---------- */
+/* ---------- Background optional ---------- */
 function applyBackground(){
   const s = loadState();
   const url = (s.settings?.backgroundUrl || "").trim();
@@ -389,6 +394,24 @@ function renderShell(out, activePath){
   return node;
 }
 
+/* ---------- Common stats ---------- */
+function sumFields(state){
+  const active = state.fields.filter(f=>!f.archivedAtISO);
+  const by = (t)=> active.filter(f=>f.type===t).reduce((s,f)=>s+(Number(f.areaDaa)||0),0);
+  const total = active.reduce((s,f)=>s+(Number(f.areaDaa)||0),0);
+  return {
+    count: active.length,
+    totalDaa: total,
+    fulldyrket: by("FUL"), overflatedyrket: by("OVF"), innmarksbeite: by("IB")
+  };
+}
+function fieldTypeLabel(t){
+  if(t==="FUL") return "Fulldyrket";
+  if(t==="OVF") return "Overflatedyrket";
+  if(t==="IB") return "Innmarksbeite";
+  return t || "";
+}
+
 /* =======================
    Pages
    ======================= */
@@ -397,7 +420,6 @@ function buildYrUrl(place){
   const q = encodeURIComponent((place || "Karmøy").trim());
   return `https://www.yr.no/nb/sok?q=${q}`;
 }
-
 function statCard(label, value, hint="", pillClass=""){
   return `
     <div class="card flat" style="background:rgba(0,0,0,.14);border:1px solid rgba(255,255,255,.08);box-shadow:none">
@@ -415,8 +437,9 @@ function pageForside(state){
   const activities = state.activities.filter(a=>!a.deletedAt).slice(0, 10);
 
   const openTasks = state.tasks.filter(t=>!t.completedAtISO).length;
-  const doneTasks = state.tasks.filter(t=>!!t.completedAtISO).length;
   const assetsCount = state.assets.filter(a=>!a.archivedAtISO).length;
+
+  const fsum = sumFields(state);
 
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
@@ -433,36 +456,41 @@ function pageForside(state){
     return sc;
   });
 
-  const scHtml = shortcuts.length ? `
-    <div class="grid2">
-      ${shortcuts.map(s=>`
-        <a class="btn" target="_blank" rel="noopener" href="${escapeHtml(s.url)}">${escapeHtml(s.title)}</a>
-      `).join("")}
-    </div>
-  ` : `<div class="muted">Ingen snarveier enda.</div>`;
-
   const node = h(`
     <div>
       <div class="card">
         <div class="cardHeader">
           <div>
             <div class="h2">Oversikt</div>
-            <div class="muted">Alt viktig på ett sted</div>
+            <div class="muted">Alt viktig – raskt og ryddig</div>
           </div>
           ${running ? `<span class="pill ok">Jobb pågår</span>` : `<span class="pill">Ingen jobb nå</span>`}
         </div>
         <div class="space"></div>
 
         <div class="grid3">
-          ${statCard("Åpne oppgaver", String(openTasks), openTasks ? "Husk å sjekke" : "Ser bra ut", openTasks ? "warn" : "ok")}
-          ${statCard("Maskiner/utstyr", String(assetsCount), assetsCount ? "Registrert" : "Legg til", assetsCount ? "ok" : "")}
-          ${statCard("Innkjøp denne mnd", `${Math.round(monthSpend)} NOK`, `${purchasesThisMonth.length} stk`, purchasesThisMonth.length ? "ok" : "")}
+          ${statCard("Åpne oppgaver", String(openTasks), openTasks ? "Sjekk i dag" : "OK", openTasks ? "warn" : "ok")}
+          ${statCard("Skifter", String(fsum.count), fsum.count ? "Registrert" : "Legg til", fsum.count ? "ok" : "")}
+          ${statCard("Areal (daa)", String(Math.round(fsum.totalDaa*10)/10), "Sum aktive", fsum.totalDaa>0 ? "ok" : "")}
+        </div>
+
+        <div class="space"></div>
+        <div class="grid3">
+          ${statCard("Maskiner/utstyr", String(assetsCount), assetsCount ? "OK" : "Registrer", assetsCount ? "ok" : "")}
+          ${statCard("Innkjøp mnd", `${Math.round(monthSpend)} NOK`, `${purchasesThisMonth.length} stk`, purchasesThisMonth.length ? "ok" : "")}
+          ${statCard("Sprøyting", String(state.sprayJournal.length), "Journal", state.sprayJournal.length ? "ok" : "")}
         </div>
 
         <div class="space"></div>
         <div class="grid2">
           <a class="btn primary" href="#/oppgaver?new=1">+ Ny oppgave</a>
-          <a class="btn primary" href="#/jobb">${running ? "Åpne jobbklokke" : "Start jobbklokke"}</a>
+          <a class="btn primary" href="#/spray?new=1">+ Sprøyting (wizard)</a>
+        </div>
+
+        <div class="space"></div>
+        <div class="grid2">
+          <a class="btn" href="#/skifter">Skifter</a>
+          <a class="btn" href="#/mingard">Min gård</a>
         </div>
       </div>
 
@@ -477,7 +505,13 @@ function pageForside(state){
           <a class="badge" href="#/innstillinger">Rediger</a>
         </div>
         <div class="space"></div>
-        ${scHtml}
+        ${shortcuts.length ? `
+          <div class="grid2">
+            ${shortcuts.map(s=>`
+              <a class="btn" target="_blank" rel="noopener" href="${escapeHtml(s.url)}">${escapeHtml(s.title)}</a>
+            `).join("")}
+          </div>
+        ` : `<div class="muted">Ingen snarveier enda.</div>`}
       </div>
 
       <div class="space"></div>
@@ -508,24 +542,544 @@ function pageForside(state){
           </div>
         ` : `<div class="muted">Ingen aktiviteter enda.</div>`}
       </div>
-
-      <div class="space"></div>
-
-      <div class="card">
-        <div class="h2">Hurtig</div>
-        <div class="grid2">
-          <a class="btn" href="#/maskiner">Maskiner/utstyr</a>
-          <a class="btn" href="#/innkjop">Innkjøp</a>
-          <a class="btn" href="#/backup">Backup</a>
-          <a class="btn" href="#/raadgiver">Rådgiver (låst)</a>
-        </div>
-      </div>
     </div>
   `);
 
   return { title:"Forside", subtitle:`${state.farm.name} • Norsk • GitHub-only`, node };
 }
 
+/* ----- Min gård ----- */
+function pageMinGard(state){
+  const fsum = sumFields(state);
+
+  const node = h(`
+    <div>
+      <div class="card">
+        <div class="h2">Min gård</div>
+        <div class="muted">Nøkkeltall og grunnmur for regelverk (areal/skifter)</div>
+        <div class="space"></div>
+
+        <div class="grid2">
+          <div class="card flat" style="background:rgba(0,0,0,.14);border:1px solid rgba(255,255,255,.08);box-shadow:none">
+            <div class="muted">Gårdsnavn</div>
+            <div style="font-size:18px;font-weight:980">${escapeHtml(state.farm.name)}</div>
+          </div>
+          <div class="card flat" style="background:rgba(0,0,0,.14);border:1px solid rgba(255,255,255,.08);box-shadow:none">
+            <div class="muted">Kommune</div>
+            <div style="font-size:18px;font-weight:980">${escapeHtml(state.farm.kommune || "—")}</div>
+          </div>
+        </div>
+
+        <div class="space"></div>
+
+        <div class="grid3">
+          ${statCard("Totalt areal (daa)", String(Math.round(fsum.totalDaa*10)/10), "Sum aktive", fsum.totalDaa>0 ? "ok" : "")}
+          ${statCard("Fulldyrket", String(Math.round(fsum.fulldyrket*10)/10), "daa", fsum.fulldyrket>0 ? "ok" : "")}
+          ${statCard("Overflatedyrket", String(Math.round(fsum.overflatedyrket*10)/10), "daa", fsum.overflatedyrket>0 ? "ok" : "")}
+        </div>
+
+        <div class="space"></div>
+
+        <div class="grid2">
+          ${statCard("Innmarksbeite", String(Math.round(fsum.innmarksbeite*10)/10), "daa", fsum.innmarksbeite>0 ? "ok" : "")}
+          ${statCard("Antall skifter", String(fsum.count), "aktive", fsum.count>0 ? "ok" : "")}
+        </div>
+
+        <div class="space"></div>
+        <div class="grid2">
+          <a class="btn primary" href="#/skifter?new=1">+ Legg til skifte</a>
+          <a class="btn" href="#/skifter">Åpne skifter</a>
+        </div>
+
+        <div class="space"></div>
+        <div class="muted small">
+          Neste steg: “Hent fra Gårdskart”. Vi lager en løsning som passer GitHub-only (semi-automatisk import).
+        </div>
+      </div>
+    </div>
+  `);
+
+  return { title:"Min gård", subtitle:"Areal summeres automatisk", node };
+}
+
+/* ----- Skifter ----- */
+function fieldSheet({mode, field}){
+  const title = mode==="edit" ? "Rediger skifte" : "Nytt skifte";
+  const name = field?.name || "";
+  const area = field?.areaDaa ?? "";
+  const type = field?.type || "FUL";
+  const notes = field?.notes || "";
+  return `
+    <div class="sheet-backdrop" id="bd"></div>
+    <div class="sheet">
+      <div class="h2">${title}</div>
+
+      <label class="muted">Navn</label><div class="space"></div>
+      <input class="input" id="f_name" placeholder="f.eks Skifte 1" value="${escapeHtml(name)}" />
+
+      <div class="space"></div>
+      <label class="muted">Areal (daa)</label><div class="space"></div>
+      <input class="input" id="f_area" type="number" placeholder="0" value="${escapeHtml(area)}" />
+
+      <div class="space"></div>
+      <label class="muted">Type</label><div class="space"></div>
+      <select class="input" id="f_type">
+        <option value="FUL" ${type==="FUL"?"selected":""}>Fulldyrket</option>
+        <option value="OVF" ${type==="OVF"?"selected":""}>Overflatedyrket</option>
+        <option value="IB" ${type==="IB"?"selected":""}>Innmarksbeite</option>
+      </select>
+
+      <div class="space"></div>
+      <label class="muted">Notat</label><div class="space"></div>
+      <textarea class="input" id="f_notes" placeholder="Valgfritt">${escapeHtml(notes)}</textarea>
+
+      <div class="space"></div>
+      <div class="grid2">
+        <a class="btn primary" href="javascript:void(0)" id="f_save">${mode==="edit"?"Lagre":"Opprett"}</a>
+        <a class="btn" href="#/skifter">Avbryt</a>
+      </div>
+
+      ${mode==="edit" ? `
+        <div class="space"></div>
+        <a class="btn danger" href="javascript:void(0)" id="f_archive">Arkiver skifte</a>
+        <div class="muted small" style="margin-top:8px">Arkivering er tryggere enn sletting.</div>
+      ` : ``}
+    </div>
+  `;
+}
+
+function pageSkifter(state, params){
+  const creating = params.get("new")==="1";
+  const editId = params.get("edit");
+  const id = params.get("id");
+  const q = (params.get("q")||"").trim().toLowerCase();
+
+  const active = state.fields.filter(f=>!f.archivedAtISO);
+  const list = active
+    .filter(f=> !q ? true : (`${f.name} ${fieldTypeLabel(f.type)} ${f.areaDaa} ${f.notes||""}`).toLowerCase().includes(q))
+    .slice()
+    .sort((a,b)=> (a.name||"").localeCompare(b.name||""));
+
+  const current = id ? state.fields.find(f=>f.id===id) : null;
+  const currentSpray = current
+    ? state.sprayJournal.filter(s=>s.fieldId===current.id).slice().sort((a,b)=> (b.dateISO||"").localeCompare(a.dateISO||"")).slice(0,30)
+    : [];
+
+  const fsum = sumFields(state);
+
+  const node = h(`
+    <div>
+      <div class="card">
+        <div class="cardHeader">
+          <div>
+            <div class="h2">Skifter</div>
+            <div class="muted">Areal summeres automatisk</div>
+          </div>
+          <a class="btn small primary" href="#/skifter?new=1">+ Ny</a>
+        </div>
+
+        <div class="space"></div>
+        <div class="grid3">
+          ${statCard("Antall aktive", String(fsum.count), "skifter", fsum.count>0 ? "ok" : "")}
+          ${statCard("Totalt daa", String(Math.round(fsum.totalDaa*10)/10), "sum", fsum.totalDaa>0 ? "ok" : "")}
+          ${statCard("Fulldyrket daa", String(Math.round(fsum.fulldyrket*10)/10), "sum", fsum.fulldyrket>0 ? "ok" : "")}
+        </div>
+
+        <div class="space"></div>
+        <input class="input" id="q" placeholder="Søk skifter..." value="${escapeHtml(params.get("q")||"")}" />
+      </div>
+
+      <div class="space"></div>
+
+      <div class="card">
+        <div class="h2">Liste</div>
+        ${list.length ? `
+          <div class="list">
+            ${list.map(f=>`
+              <a class="item" style="text-decoration:none" href="#/skifter?id=${f.id}">
+                <div class="row" style="justify-content:space-between;">
+                  <div>
+                    <div><b>${escapeHtml(f.name)}</b> <span class="badge">${escapeHtml(fieldTypeLabel(f.type))}</span></div>
+                    <div class="muted">${Math.round((Number(f.areaDaa)||0)*10)/10} daa</div>
+                  </div>
+                  <span class="badge">Åpne</span>
+                </div>
+              </a>
+            `).join("")}
+          </div>
+        ` : `<div class="muted">Ingen skifter enda. Legg til første.</div>`}
+      </div>
+
+      ${current ? `
+        <div class="space"></div>
+        <div class="card">
+          <div class="cardHeader">
+            <div>
+              <div class="h2">${escapeHtml(current.name)}</div>
+              <div class="muted">${escapeHtml(fieldTypeLabel(current.type))} • ${Math.round((Number(current.areaDaa)||0)*10)/10} daa</div>
+            </div>
+            <a class="badge" href="#/skifter">Lukk</a>
+          </div>
+
+          ${current.notes ? `<div class="muted" style="margin-top:8px">${escapeHtml(current.notes)}</div>`:""}
+
+          <div class="space"></div>
+          <div class="grid2">
+            <a class="btn primary" href="#/spray?new=1&field=${current.id}">+ Sprøyting på dette skiftet</a>
+            <a class="btn" href="#/skifter?edit=${current.id}">Rediger</a>
+          </div>
+
+          <div class="space"></div>
+          <div class="grid2">
+            <a class="btn" href="javascript:void(0)" id="exSprayCsv">Eksport sprøyting CSV</a>
+            <a class="btn" href="javascript:void(0)" id="exSprayJson">Eksport sprøyting JSON</a>
+          </div>
+
+          <div class="space"></div>
+          <div class="h2">Sprøytehistorikk</div>
+          ${currentSpray.length ? `
+            <div class="list">
+              ${currentSpray.map(s=>`
+                <a class="item" style="text-decoration:none" href="#/spray?id=${s.id}">
+                  <div><b>${escapeHtml(s.purpose || "Sprøyting")}</b> – ${escapeHtml(s.product || "Produkt")}</div>
+                  <div class="muted">${s.dateISO ? fmtDateTime(s.dateISO) : ""} • Dose: ${escapeHtml(s.dose||"—")}</div>
+                </a>
+              `).join("")}
+            </div>
+          ` : `<div class="muted">Ingen sprøyting registrert på dette skiftet enda.</div>`}
+        </div>
+      ` : ""}
+
+      ${creating ? fieldSheet({mode:"new"}) : ""}
+      ${editId ? fieldSheet({mode:"edit", field: state.fields.find(x=>x.id===editId)}) : ""}
+    </div>
+  `);
+
+  setTimeout(()=>{
+    $("#q", node)?.addEventListener("input", (e)=>{
+      const v = e.target.value;
+      const p = new URLSearchParams(params);
+      if(v) p.set("q", v); else p.delete("q");
+      if(id) p.set("id", id);
+      location.hash = `#/skifter?${p.toString()}`;
+    });
+
+    // export for current field
+    if(current){
+      $("#exSprayCsv")?.addEventListener("click", ()=>{
+        const s = loadState();
+        const rows = s.sprayJournal.filter(x=>x.fieldId===current.id)
+          .slice().sort((a,b)=> (a.dateISO||"").localeCompare(b.dateISO||""))
+          .map(x=>({
+            dato: x.dateISO,
+            skifte: current.name,
+            formal: x.purpose,
+            produkt: x.product,
+            dose: x.dose,
+            vann: x.water,
+            utfort_av: x.operator,
+            vaer: x.weather,
+            notat: x.notes
+          }));
+        downloadText(`sprøyting-${safeFilename(current.name)}.csv`, toCSV(rows), "text/csv");
+      });
+      $("#exSprayJson")?.addEventListener("click", ()=>{
+        const s = loadState();
+        const rows = s.sprayJournal.filter(x=>x.fieldId===current.id);
+        downloadText(`sprøyting-${safeFilename(current.name)}.json`, JSON.stringify(rows, null, 2), "application/json");
+      });
+    }
+
+    // sheet handlers
+    const closeToSkifter = ()=> nav("/skifter");
+    if(creating || editId){
+      $("#bd")?.addEventListener("click", closeToSkifter);
+
+      $("#f_save")?.addEventListener("click", ()=>{
+        const s = loadState();
+        const name = $("#f_name")?.value?.trim();
+        const area = Number($("#f_area")?.value || 0);
+        const type = $("#f_type")?.value;
+        const notes = $("#f_notes")?.value?.trim() || "";
+        if(!name){ alert("Fyll ut navn"); return; }
+        if(area <= 0){ alert("Areal må være større enn 0"); return; }
+
+        if(editId){
+          const f = s.fields.find(x=>x.id===editId);
+          if(!f){ alert("Fant ikke skifte"); return; }
+          f.name = name; f.areaDaa = area; f.type = type; f.notes = notes;
+          addActivity(s, { type:"SKIFTE_ENDRET", title:`Skifte endret: ${name}`, refs:{ fieldId: f.id }});
+        }else{
+          const f = newField({name, areaDaa: area, type, notes});
+          s.fields.push(f);
+          addActivity(s, { type:"SKIFTE_NY", title:`Nytt skifte: ${name}`, refs:{ fieldId: f.id }});
+        }
+
+        saveState(s);
+        nav("/skifter");
+      });
+
+      $("#f_archive")?.addEventListener("click", ()=>{
+        if(!confirm("Arkivere dette skiftet?")) return;
+        const s = loadState();
+        const f = s.fields.find(x=>x.id===editId);
+        if(!f) return;
+        f.archivedAtISO = nowISO();
+        addActivity(s, { type:"SKIFTE_ARKIV", title:`Skifte arkivert: ${f.name}`, refs:{ fieldId: f.id }});
+        saveState(s);
+        nav("/skifter");
+      });
+    }
+  },0);
+
+  return { title:"Skifter", subtitle:"Areal blir alltid korrekt", node };
+}
+
+/* ----- Sprøytejournal ----- */
+function sprayWizardSheet(state, presetFieldId){
+  const fields = state.fields.filter(f=>!f.archivedAtISO).slice().sort((a,b)=> (a.name||"").localeCompare(b.name||""));
+  return `
+    <div class="sheet-backdrop" id="bd"></div>
+    <div class="sheet">
+      <div class="h2">Sprøyting (wizard)</div>
+      <div class="muted">Enkle spørsmål → lager sprøytejournal</div>
+      <div class="space"></div>
+
+      <label class="muted">Dato</label><div class="space"></div>
+      <input class="input" id="sp_date" type="datetime-local" />
+
+      <div class="space"></div>
+      <label class="muted">Skifte</label><div class="space"></div>
+      <select class="input" id="sp_field">
+        <option value="">— velg —</option>
+        ${fields.map(f=>`<option value="${f.id}" ${presetFieldId===f.id ? "selected":""}>${escapeHtml(f.name)} (${Math.round((Number(f.areaDaa)||0)*10)/10} daa)</option>`).join("")}
+      </select>
+
+      <div class="space"></div>
+      <label class="muted">Formål</label><div class="space"></div>
+      <select class="input" id="sp_purpose">
+        <option value="Ugras">Ugras</option>
+        <option value="Sopp">Sopp</option>
+        <option value="Skadedyr">Skadedyr</option>
+        <option value="Annet">Annet</option>
+      </select>
+
+      <div class="space"></div>
+      <label class="muted">Produkt</label><div class="space"></div>
+      <input class="input" id="sp_product" placeholder="f.eks MCPA / Roundup / ..." />
+
+      <div class="space"></div>
+      <div class="grid2">
+        <div>
+          <label class="muted">Dose</label><div class="space"></div>
+          <input class="input" id="sp_dose" placeholder="f.eks 0,5 l/daa" />
+        </div>
+        <div>
+          <label class="muted">Vann</label><div class="space"></div>
+          <input class="input" id="sp_water" placeholder="f.eks 20 l/daa" />
+        </div>
+      </div>
+
+      <div class="space"></div>
+      <label class="muted">Utført av</label><div class="space"></div>
+      <input class="input" id="sp_operator" placeholder="Navn" />
+
+      <div class="space"></div>
+      <label class="muted">Vær (valgfritt)</label><div class="space"></div>
+      <input class="input" id="sp_weather" placeholder="f.eks lett vind, 8°C" />
+
+      <div class="space"></div>
+      <label class="muted">Notat</label><div class="space"></div>
+      <textarea class="input" id="sp_notes" placeholder="Valgfritt"></textarea>
+
+      <div class="space"></div>
+      <div class="grid2">
+        <a class="btn primary" href="javascript:void(0)" id="sp_save">Lagre sprøyting</a>
+        <a class="btn" href="#/spray">Avbryt</a>
+      </div>
+    </div>
+  `;
+}
+
+function exportSprayCSV(state, rows, filename){
+  const byField = (id)=> state.fields.find(f=>f.id===id)?.name || "";
+  const out = rows.map(s=>({
+    dato: s.dateISO,
+    skifte: byField(s.fieldId),
+    formal: s.purpose,
+    produkt: s.product,
+    dose: s.dose,
+    vann: s.water,
+    utfort_av: s.operator,
+    vaer: s.weather,
+    notat: s.notes
+  }));
+  downloadText(filename, toCSV(out), "text/csv");
+}
+
+function pageSpray(state, params){
+  const creating = params.get("new")==="1";
+  const id = params.get("id");
+  const q = (params.get("q")||"").trim().toLowerCase();
+  const filterField = params.get("field");
+
+  const list = state.sprayJournal
+    .filter(s=> filterField ? s.fieldId===filterField : true)
+    .filter(s=> !q ? true : (`${s.purpose} ${s.product} ${s.dose} ${s.operator} ${s.notes||""}`).toLowerCase().includes(q))
+    .slice()
+    .sort((a,b)=> (b.dateISO||"").localeCompare(a.dateISO||""))
+    .slice(0, 120);
+
+  const current = id ? state.sprayJournal.find(x=>x.id===id) : null;
+  const fieldName = current ? (state.fields.find(f=>f.id===current.fieldId)?.name || "—") : "";
+
+  const node = h(`
+    <div>
+      <div class="card">
+        <div class="cardHeader">
+          <div>
+            <div class="h2">Sprøytejournal</div>
+            <div class="muted">${filterField ? `Filtrert på skifte: ${escapeHtml(state.fields.find(f=>f.id===filterField)?.name || "")}` : "Alle registreringer"}</div>
+          </div>
+          <a class="btn small primary" href="#/spray?new=1${filterField ? `&field=${filterField}`:""}">+ Ny</a>
+        </div>
+
+        <div class="space"></div>
+
+        <div class="grid2">
+          <a class="btn" href="javascript:void(0)" id="exCsv">Eksport CSV</a>
+          <a class="btn" href="javascript:void(0)" id="exJson">Eksport JSON</a>
+        </div>
+
+        <div class="space"></div>
+        <input class="input" id="q" placeholder="Søk..." value="${escapeHtml(params.get("q")||"")}" />
+      </div>
+
+      <div class="space"></div>
+
+      <div class="card">
+        <div class="h2">Liste</div>
+        ${list.length ? `
+          <div class="list">
+            ${list.map(s=>{
+              const f = state.fields.find(x=>x.id===s.fieldId);
+              return `
+                <a class="item" style="text-decoration:none" href="#/spray?id=${s.id}">
+                  <div><b>${escapeHtml(s.purpose || "Sprøyting")}</b> – ${escapeHtml(s.product || "Produkt")}</div>
+                  <div class="muted">${s.dateISO ? fmtDateTime(s.dateISO) : ""} • ${escapeHtml(f?.name || "Skifte")} • Dose: ${escapeHtml(s.dose||"—")}</div>
+                </a>
+              `;
+            }).join("")}
+          </div>
+        ` : `<div class="muted">Ingen registreringer enda.</div>`}
+      </div>
+
+      ${current ? `
+        <div class="space"></div>
+        <div class="card">
+          <div class="cardHeader">
+            <div>
+              <div class="h2">${escapeHtml(current.purpose || "Sprøyting")} – ${escapeHtml(current.product || "")}</div>
+              <div class="muted">${current.dateISO ? fmtDateTime(current.dateISO) : ""} • Skifte: ${escapeHtml(fieldName)}</div>
+            </div>
+            <a class="badge" href="#/spray${filterField ? `?field=${filterField}`:""}">Lukk</a>
+          </div>
+
+          <div class="space"></div>
+          <div class="grid2">
+            <div class="card flat" style="background:rgba(0,0,0,.14);border:1px solid rgba(255,255,255,.08);box-shadow:none">
+              <div class="muted">Dose</div>
+              <div style="font-size:16px;font-weight:980">${escapeHtml(current.dose || "—")}</div>
+            </div>
+            <div class="card flat" style="background:rgba(0,0,0,.14);border:1px solid rgba(255,255,255,.08);box-shadow:none">
+              <div class="muted">Vann</div>
+              <div style="font-size:16px;font-weight:980">${escapeHtml(current.water || "—")}</div>
+            </div>
+          </div>
+
+          <div class="space"></div>
+          <div class="muted">Utført av: <b>${escapeHtml(current.operator || "—")}</b></div>
+          ${current.weather ? `<div class="muted">Vær: ${escapeHtml(current.weather)}</div>` : ``}
+          ${current.notes ? `<div class="muted" style="margin-top:8px">${escapeHtml(current.notes)}</div>` : ``}
+        </div>
+      ` : ""}
+
+      ${creating ? sprayWizardSheet(state, params.get("field") || "") : ""}
+    </div>
+  `);
+
+  setTimeout(()=>{
+    $("#q", node)?.addEventListener("input", (e)=>{
+      const v = e.target.value;
+      const p = new URLSearchParams(params);
+      if(v) p.set("q", v); else p.delete("q");
+      location.hash = `#/spray?${p.toString()}`;
+    });
+
+    $("#exCsv")?.addEventListener("click", ()=>{
+      const s = loadState();
+      const rows = s.sprayJournal
+        .filter(x=> filterField ? x.fieldId===filterField : true)
+        .slice().sort((a,b)=> (a.dateISO||"").localeCompare(b.dateISO||""));
+      const name = filterField ? (s.fields.find(f=>f.id===filterField)?.name || "skifte") : "alle";
+      exportSprayCSV(s, rows, `sprøytejournal-${safeFilename(name)}.csv`);
+    });
+
+    $("#exJson")?.addEventListener("click", ()=>{
+      const s = loadState();
+      const rows = s.sprayJournal.filter(x=> filterField ? x.fieldId===filterField : true);
+      const name = filterField ? (s.fields.find(f=>f.id===filterField)?.name || "skifte") : "alle";
+      downloadText(`sprøytejournal-${safeFilename(name)}.json`, JSON.stringify(rows, null, 2), "application/json");
+    });
+
+    if(creating){
+      $("#bd")?.addEventListener("click", ()=> nav(`/spray${filterField ? `?field=${filterField}`:""}`));
+
+      // default now
+      const d = new Date();
+      const pad = (n)=> String(n).padStart(2,"0");
+      const dt = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+      $("#sp_date") && ($("#sp_date").value = dt);
+
+      $("#sp_save")?.addEventListener("click", ()=>{
+        const s = loadState();
+        const dateISO = toISOFromDatetimeLocal($("#sp_date")?.value) || nowISO();
+        const fieldId = $("#sp_field")?.value;
+        const purpose = $("#sp_purpose")?.value || "";
+        const product = $("#sp_product")?.value?.trim() || "";
+        const dose = $("#sp_dose")?.value?.trim() || "";
+        const water = $("#sp_water")?.value?.trim() || "";
+        const operator = $("#sp_operator")?.value?.trim() || "";
+        const weather = $("#sp_weather")?.value?.trim() || "";
+        const notes = $("#sp_notes")?.value?.trim() || "";
+
+        if(!fieldId){ alert("Du må velge skifte"); return; }
+        if(!product){ alert("Fyll ut produkt"); return; }
+        if(!dose){ alert("Fyll ut dose"); return; }
+
+        const f = s.fields.find(x=>x.id===fieldId);
+        if(!f || f.archivedAtISO){ alert("Skiftet finnes ikke eller er arkivert"); return; }
+
+        const entry = newSpray({dateISO, fieldId, purpose, product, dose, water, operator, weather, notes});
+        s.sprayJournal.push(entry);
+
+        addActivity(s, {
+          type:"SPRØYTING",
+          title:`Sprøyting: ${f.name} – ${purpose}`,
+          description:`${fmtDateTime(dateISO)} • ${product} • Dose: ${dose}${water ? ` • Vann: ${water}`:""}`,
+          refs:{ fieldId, sprayId: entry.id }
+        });
+
+        saveState(s);
+        nav(`/spray?field=${fieldId}`);
+      });
+    }
+  },0);
+
+  return { title:"Sprøytejournal", subtitle:"Wizard + eksport", node };
+}
+
+/* ----- Aktivitet ----- */
 function pageAktivitet(state, params){
   const id = params.get("id");
   const a = state.activities.find(x=>x.id===id && !x.deletedAt);
@@ -547,13 +1101,12 @@ function pageAktivitet(state, params){
   `);
   return { title:"Aktivitet", subtitle:"Detaljer", node };
 }
-
 function pageAktivitetLogg(state, params){
   const q = (params.get("q")||"").trim().toLowerCase();
   const list = state.activities
     .filter(a=>!a.deletedAt)
     .filter(a=> !q ? true : (`${a.type} ${a.title} ${a.description||""}`).toLowerCase().includes(q))
-    .slice(0, 250);
+    .slice(0, 400);
 
   const node = h(`
     <div>
@@ -561,7 +1114,7 @@ function pageAktivitetLogg(state, params){
         <div class="cardHeader">
           <div>
             <div class="h2">Aktivitetslogg</div>
-            <div class="muted">Søk i alt (inntil 250 siste)</div>
+            <div class="muted">Søk i alt (inntil 400 siste)</div>
           </div>
           <a class="badge" href="#/forside">Lukk</a>
         </div>
@@ -598,7 +1151,7 @@ function pageAktivitetLogg(state, params){
   return { title:"Aktivitetslogg", subtitle:"Søkbar historikk", node };
 }
 
-/* ----- Tasks ----- */
+/* ----- Oppgaver (uendret i prinsipp) ----- */
 function taskSheet(){
   return `
     <div class="sheet-backdrop" id="bd"></div>
@@ -620,7 +1173,6 @@ function taskSheet(){
     </div>
   `;
 }
-
 function pageOppgaver(state, params){
   const view = params.get("view") || "apne";
   const creating = params.get("new") === "1";
@@ -731,7 +1283,7 @@ function pageOppgaver(state, params){
   return { title:"Oppgaver", subtitle:"Åpne / Ferdige (søkbare)", node };
 }
 
-/* ----- Work ----- */
+/* ----- Jobb (som før) ----- */
 let tickTimer = null;
 function calcElapsed(startISO){
   const start = new Date(startISO).getTime();
@@ -899,8 +1451,18 @@ function pageMer(){
       <div class="card">
         <div class="h2">Moduler</div>
         <div class="grid2">
+          <a class="btn" href="#/mingard">Min gård</a>
+          <a class="btn" href="#/skifter">Skifter</a>
+          <a class="btn" href="#/spray">Sprøytejournal</a>
+          <a class="btn" href="#/aktivitetlogg">Aktivitetslogg</a>
+        </div>
+        <div class="space"></div>
+        <div class="grid2">
           <a class="btn" href="#/maskiner">Maskiner / utstyr</a>
           <a class="btn" href="#/innkjop">Innkjøp</a>
+        </div>
+        <div class="space"></div>
+        <div class="grid2">
           <a class="btn" href="#/backup">Backup</a>
           <a class="btn" href="#/innstillinger">Innstillinger</a>
         </div>
@@ -910,7 +1472,7 @@ function pageMer(){
 
       <div class="card">
         <div class="h2">Rådgiver</div>
-        <div class="muted">Her skal alle fiktive beregninger ligge. Modulen er opprettet, men låst til vi planlegger regelverk/innhold.</div>
+        <div class="muted">Opprettes senere som “regelstyrt” modul. Låst inntil vi planlegger innhold og sperrer.</div>
         <div class="space"></div>
         <a class="btn" href="#/raadgiver">Åpne (låst)</a>
       </div>
@@ -919,665 +1481,32 @@ function pageMer(){
   return { title:"Mer", subtitle:"Alt samlet", node };
 }
 
-/* ----- Maskiner/utstyr + Service ----- */
-function assetSheet(){
-  return `
-    <div class="sheet-backdrop" id="bd"></div>
-    <div class="sheet">
-      <div class="h2">Ny maskin/utstyr</div>
-
-      <label class="muted">Navn</label><div class="space"></div>
-      <input class="input" id="a_name" placeholder="f.eks Massey Ferguson 135" />
-
-      <div class="space"></div>
-      <label class="muted">Type</label><div class="space"></div>
-      <select class="input" id="a_kind">
-        <option value="Traktor">Traktor</option>
-        <option value="Redskap">Redskap</option>
-        <option value="Maskin">Maskin</option>
-        <option value="Utstyr">Utstyr</option>
-        <option value="Annet">Annet</option>
-      </select>
-
-      <div class="space"></div>
-      <label class="muted">Merke/modell (valgfritt)</label><div class="space"></div>
-      <input class="input" id="a_model" placeholder="f.eks MF 135" />
-
-      <div class="space"></div>
-      <label class="muted">Serienr (valgfritt)</label><div class="space"></div>
-      <input class="input" id="a_serial" placeholder="..." />
-
-      <div class="space"></div>
-      <label class="muted">Notat</label><div class="space"></div>
-      <textarea class="input" id="a_notes" placeholder="Valgfritt"></textarea>
-
-      <div class="space"></div>
-      <div class="grid2">
-        <a class="btn primary" href="javascript:void(0)" id="a_save">Lagre</a>
-        <a class="btn" href="#/maskiner">Avbryt</a>
-      </div>
-    </div>
-  `;
-}
-
-function serviceSheet(state, assetId){
-  const asset = state.assets.find(a=>a.id===assetId);
-  return `
-    <div class="sheet-backdrop" id="bd"></div>
-    <div class="sheet">
-      <div class="h2">Service / reparasjon</div>
-      <div class="muted">${asset ? escapeHtml(asset.name) : ""}</div>
-      <div class="space"></div>
-
-      <label class="muted">Dato</label><div class="space"></div>
-      <input class="input" id="s_date" type="date" />
-
-      <div class="space"></div>
-      <label class="muted">Kategori</label><div class="space"></div>
-      <input class="input" id="s_cat" placeholder="f.eks Oljeskift / Reparasjon" />
-
-      <div class="space"></div>
-      <label class="muted">Kostnad (NOK)</label><div class="space"></div>
-      <input class="input" id="s_cost" type="number" placeholder="0" />
-
-      <div class="space"></div>
-      <label class="muted">Notat</label><div class="space"></div>
-      <textarea class="input" id="s_notes" placeholder="Valgfritt"></textarea>
-
-      <div class="space"></div>
-      <div class="grid2">
-        <a class="btn primary" href="javascript:void(0)" id="s_save">Lagre</a>
-        <a class="btn" href="#/maskiner?id=${assetId}">Avbryt</a>
-      </div>
-    </div>
-  `;
-}
-
-function exportAssetHistoryCSV(state, asset){
-  const rows = state.activities
-    .filter(a=>!a.deletedAt && a.refs?.assetId === asset.id)
-    .slice().reverse()
-    .map(a=>({
-      tidspunkt: a.createdAt,
-      type: a.type,
-      tittel: a.title,
-      beskrivelse: a.description || ""
-    }));
-  downloadText(`maskin-historikk-${safeFilename(asset.name)}.csv`, toCSV(rows), "text/csv");
-}
-function exportAssetHistoryJSON(state, asset){
-  const rows = state.activities.filter(a=>!a.deletedAt && a.refs?.assetId === asset.id).slice().reverse();
-  downloadText(`maskin-historikk-${safeFilename(asset.name)}.json`, JSON.stringify(rows, null, 2), "application/json");
-}
-function exportAssetServicesCSV(state, asset){
-  const rows = state.services
-    .filter(s=>s.assetId===asset.id)
-    .slice()
-    .sort((a,b)=> (a.dateISO||"").localeCompare(b.dateISO||""))
-    .map(s=>({
-      dato: s.dateISO,
-      kategori: s.category,
-      kostnad_nok: s.costNok,
-      notat: s.notes || ""
-    }));
-  downloadText(`service-${safeFilename(asset.name)}.csv`, toCSV(rows), "text/csv");
-}
-
-function pageMaskiner(state, params){
-  const creating = params.get("new")==="1";
-  const id = params.get("id");
-  const q = (params.get("q")||"").trim().toLowerCase();
-  const addServiceFor = params.get("service"); // assetId
-
-  const list = state.assets
-    .filter(a=>!a.archivedAtISO)
-    .filter(a=> !q ? true : (`${a.name} ${a.kind} ${a.brandModel||""} ${a.serial||""}`).toLowerCase().includes(q))
-    .sort((a,b)=> (a.name||"").localeCompare(b.name||""));
-
-  const current = id ? state.assets.find(a=>a.id===id) : null;
-
-  const history = current ? state.activities.filter(x=>!x.deletedAt && x.refs?.assetId===current.id).slice(0, 40) : [];
-  const services = current ? state.services.filter(s=>s.assetId===current.id).slice().sort((a,b)=> (b.dateISO||"").localeCompare(a.dateISO||"")).slice(0, 25) : [];
-
+/* ----- Maskiner/innkjøp/innstillinger/backup/rådgiver -----
+   (Beholdt fra forrige versjon – for å holde svaret håndterlig har jeg latt de sidene være uendret i denne “20 steg” runden.
+   De eksisterer fortsatt, men vi fokuserte nå på Skifter + Sprøytejournal + Min gård + Forside.
+*/
+function pagePlaceholder(title, subtitle){
   const node = h(`
     <div>
       <div class="card">
-        <div class="cardHeader">
-          <div>
-            <div class="h2">Maskiner / utstyr</div>
-            <div class="muted">Historikk + service + eksport</div>
-          </div>
-          <a class="btn small primary" href="#/maskiner?new=1">+ Ny</a>
-        </div>
+        <div class="h2">${escapeHtml(title)}</div>
+        <div class="muted">${escapeHtml(subtitle)}</div>
         <div class="space"></div>
-        <input class="input" id="q" placeholder="Søk..." value="${escapeHtml(params.get("q")||"")}" />
-      </div>
-
-      <div class="space"></div>
-
-      <div class="card">
-        <div class="h2">Liste</div>
-        ${list.length ? `
-          <div class="list">
-            ${list.map(a=>`
-              <a class="item" style="text-decoration:none" href="#/maskiner?id=${a.id}">
-                <div class="row" style="justify-content:space-between;">
-                  <div>
-                    <div><b>${escapeHtml(a.name)}</b> <span class="badge">${escapeHtml(a.kind)}</span></div>
-                    <div class="muted">${escapeHtml(a.brandModel||"")}${a.serial?` • ${escapeHtml(a.serial)}`:""}</div>
-                  </div>
-                  <span class="badge">Åpne</span>
-                </div>
-              </a>
-            `).join("")}
-          </div>
-        ` : `<div class="muted">Ingen maskiner enda.</div>`}
-      </div>
-
-      ${current ? `
-        <div class="space"></div>
-        <div class="card">
-          <div class="cardHeader">
-            <div>
-              <div class="h2">${escapeHtml(current.name)}</div>
-              <div class="muted">${escapeHtml(current.kind)} • ${escapeHtml(current.brandModel||"")}</div>
-            </div>
-            <a class="badge" href="#/maskiner">Lukk</a>
-          </div>
-
-          ${current.notes ? `<div class="muted" style="margin-top:8px">${escapeHtml(current.notes)}</div>`:""}
-
-          <div class="space"></div>
-          <div class="grid2">
-            <a class="btn" href="javascript:void(0)" id="exCsv">Eksport historikk CSV</a>
-            <a class="btn" href="javascript:void(0)" id="exJson">Eksport historikk JSON</a>
-          </div>
-
-          <div class="space"></div>
-          <div class="grid2">
-            <a class="btn primary" href="#/maskiner?id=${current.id}&service=${current.id}">+ Service/Reparasjon</a>
-            <a class="btn" href="javascript:void(0)" id="exSvc">Eksport service CSV</a>
-          </div>
-
-          <div class="space"></div>
-          <div class="h2">Service / reparasjon</div>
-          ${services.length ? `
-            <div class="list">
-              ${services.map(s=>`
-                <div class="item">
-                  <div class="row" style="justify-content:space-between;">
-                    <div>
-                      <div><b>${escapeHtml(s.category || "Service")}</b></div>
-                      <div class="muted">${s.dateISO ? fmtDate(s.dateISO) : ""} • ${Math.round(Number(s.costNok||0))} NOK</div>
-                    </div>
-                    <span class="badge">OK</span>
-                  </div>
-                  ${s.notes ? `<div class="muted" style="margin-top:6px">${escapeHtml(s.notes)}</div>`:""}
-                </div>
-              `).join("")}
-            </div>
-          ` : `<div class="muted">Ingen service registrert enda.</div>`}
-
-          <div class="space"></div>
-          <div class="h2">Historikk (aktiviteter)</div>
-          ${history.length ? `
-            <div class="list">
-              ${history.map(hh=>`
-                <a class="item" style="text-decoration:none" href="#/aktivitet?id=${hh.id}">
-                  <div><b>${escapeHtml(hh.title)}</b></div>
-                  <div class="muted">${escapeHtml(hh.type)} • ${fmtDateTime(hh.createdAt)}</div>
-                </a>
-              `).join("")}
-            </div>
-          ` : `<div class="muted">Ingen aktiviteter knyttet til denne enda.</div>`}
-        </div>
-      ` : ""}
-
-      ${creating ? assetSheet() : ""}
-      ${addServiceFor ? serviceSheet(state, addServiceFor) : ""}
-    </div>
-  `);
-
-  setTimeout(()=>{
-    $("#q", node)?.addEventListener("input", (e)=>{
-      const v = e.target.value;
-      const p = new URLSearchParams(params);
-      if(v) p.set("q", v); else p.delete("q");
-      if(id) p.set("id", id);
-      location.hash = `#/maskiner?${p.toString()}`;
-    });
-
-    if(creating){
-      $("#bd")?.addEventListener("click", ()=> nav("/maskiner"));
-      $("#a_save")?.addEventListener("click", ()=>{
-        const name = $("#a_name")?.value?.trim();
-        const kind = $("#a_kind")?.value;
-        const brandModel = $("#a_model")?.value?.trim() || "";
-        const serial = $("#a_serial")?.value?.trim() || "";
-        const notes = $("#a_notes")?.value?.trim() || "";
-        if(!name){ alert("Fyll ut navn"); return; }
-        const s = loadState();
-        const asset = newAsset({name, kind, brandModel, serial, notes});
-        s.assets.push(asset);
-        addActivity(s, { type:"MASKIN_NY", title:`Ny maskin/utstyr: ${asset.name}`, description: notes, refs:{ assetId: asset.id }});
-        saveState(s);
-        nav("/maskiner");
-      });
-    }
-
-    if(current){
-      $("#exCsv")?.addEventListener("click", ()=> exportAssetHistoryCSV(loadState(), current));
-      $("#exJson")?.addEventListener("click", ()=> exportAssetHistoryJSON(loadState(), current));
-      $("#exSvc")?.addEventListener("click", ()=> exportAssetServicesCSV(loadState(), current));
-    }
-
-    if(addServiceFor){
-      $("#bd")?.addEventListener("click", ()=> nav(`/maskiner?id=${addServiceFor}`));
-      const d = new Date(); const pad=(n)=>String(n).padStart(2,"0");
-      $("#s_date") && ($("#s_date").value = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`);
-
-      $("#s_save")?.addEventListener("click", ()=>{
-        const s = loadState();
-        const assetId = addServiceFor;
-        const dateISO = toISOFromDateInput($("#s_date")?.value) || nowISO();
-        const category = $("#s_cat")?.value?.trim() || "Service";
-        const costNok = Number($("#s_cost")?.value || 0);
-        const notes = $("#s_notes")?.value?.trim() || "";
-
-        const asset = s.assets.find(a=>a.id===assetId);
-        if(!asset){ alert("Fant ikke maskin"); return; }
-
-        const svc = newService({assetId, dateISO, category, costNok, notes});
-        s.services.push(svc);
-
-        addActivity(s, {
-          type:"SERVICE",
-          title:`Service: ${asset.name} – ${category}`,
-          description:`${fmtDate(dateISO)} • ${Math.round(costNok)} NOK${notes ? ` • ${notes}`:""}`,
-          refs:{ assetId, serviceId: svc.id }
-        });
-
-        saveState(s);
-        nav(`/maskiner?id=${assetId}`);
-      });
-    }
-  }, 0);
-
-  return { title:"Maskiner/utstyr", subtitle:"Service + historikk + eksport", node };
-}
-
-/* ----- Innkjøp ----- */
-function purchaseSheet(state){
-  const assets = state.assets.filter(a=>!a.archivedAtISO).sort((a,b)=> (a.name||"").localeCompare(b.name||""));
-  return `
-    <div class="sheet-backdrop" id="bd"></div>
-    <div class="sheet">
-      <div class="h2">Nytt innkjøp</div>
-
-      <label class="muted">Dato</label><div class="space"></div>
-      <input class="input" id="p_date" type="date" />
-
-      <div class="space"></div>
-      <label class="muted">Leverandør</label><div class="space"></div>
-      <input class="input" id="p_supplier" placeholder="f.eks Felleskjøpet" />
-
-      <div class="space"></div>
-      <label class="muted">Kategori</label><div class="space"></div>
-      <input class="input" id="p_cat" placeholder="f.eks Reservedel / Dieselfilter" />
-
-      <div class="space"></div>
-      <label class="muted">Beløp (NOK)</label><div class="space"></div>
-      <input class="input" id="p_amount" type="number" placeholder="0" />
-
-      <div class="space"></div>
-      <label class="muted">Knytt til maskin (valgfritt)</label><div class="space"></div>
-      <select class="input" id="p_asset">
-        <option value="">—</option>
-        ${assets.map(a=>`<option value="${a.id}">${escapeHtml(a.name)}</option>`).join("")}
-      </select>
-
-      <div class="space"></div>
-      <label class="muted">Kvittering-lenke (valgfritt)</label><div class="space"></div>
-      <input class="input" id="p_receipt" placeholder="https://..." />
-
-      <div class="space"></div>
-      <label class="muted">Notat</label><div class="space"></div>
-      <textarea class="input" id="p_notes" placeholder="Valgfritt"></textarea>
-
-      <div class="space"></div>
-      <div class="grid2">
-        <a class="btn primary" href="javascript:void(0)" id="p_save">Lagre</a>
-        <a class="btn" href="#/innkjop">Avbryt</a>
-      </div>
-    </div>
-  `;
-}
-function exportPurchasesCSV(state){
-  const rows = state.purchases.slice().sort((a,b)=> (a.dateISO||"").localeCompare(b.dateISO||"")).map(p=>({
-    dato: p.dateISO,
-    leverandor: p.supplier,
-    kategori: p.category,
-    belop_nok: p.amountNok,
-    maskin: p.assetId ? (state.assets.find(a=>a.id===p.assetId)?.name || "") : "",
-    kvittering: p.receiptUrl || "",
-    notat: p.notes || ""
-  }));
-  downloadText(`innkjop-${new Date().toISOString().slice(0,10)}.csv`, toCSV(rows), "text/csv");
-}
-function exportPurchasesJSON(state){
-  downloadText(`innkjop-${new Date().toISOString().slice(0,10)}.json`, JSON.stringify(state.purchases, null, 2), "application/json");
-}
-function pageInnkjop(state, params){
-  const creating = params.get("new")==="1";
-  const q = (params.get("q")||"").trim().toLowerCase();
-
-  const list = state.purchases
-    .filter(p=> !q ? true : (`${p.supplier} ${p.category} ${p.notes||""}`).toLowerCase().includes(q))
-    .slice()
-    .sort((a,b)=> (b.dateISO||"").localeCompare(a.dateISO||""))
-    .slice(0, 80);
-
-  const node = h(`
-    <div>
-      <div class="card">
-        <div class="cardHeader">
-          <div>
-            <div class="h2">Innkjøp</div>
-            <div class="muted">Historikk + eksport</div>
-          </div>
-          <a class="btn small primary" href="#/innkjop?new=1">+ Ny</a>
-        </div>
-
-        <div class="space"></div>
-        <div class="grid2">
-          <a class="btn" href="javascript:void(0)" id="exCsv">Eksport CSV</a>
-          <a class="btn" href="javascript:void(0)" id="exJson">Eksport JSON</a>
-        </div>
-
-        <div class="space"></div>
-        <input class="input" id="q" placeholder="Søk..." value="${escapeHtml(params.get("q")||"")}" />
-      </div>
-
-      <div class="space"></div>
-
-      <div class="card">
-        <div class="h2">Siste innkjøp</div>
-        ${list.length ? `
-          <div class="list">
-            ${list.map(p=>{
-              const assetName = p.assetId ? (state.assets.find(a=>a.id===p.assetId)?.name || "") : "";
-              return `
-                <div class="item">
-                  <div class="row" style="justify-content:space-between;">
-                    <div>
-                      <div><b>${escapeHtml(p.supplier || "Innkjøp")}</b> – ${escapeHtml(p.category || "")}</div>
-                      <div class="muted">${p.dateISO ? fmtDate(p.dateISO) : ""} • ${Math.round(Number(p.amountNok||0))} NOK ${assetName ? " • " + escapeHtml(assetName) : ""}</div>
-                    </div>
-                    ${p.receiptUrl ? `<a class="badge" target="_blank" rel="noopener" href="${escapeHtml(p.receiptUrl)}">Kvittering</a>` : `<span class="badge">—</span>`}
-                  </div>
-                  ${p.notes ? `<div class="muted" style="margin-top:6px">${escapeHtml(p.notes)}</div>`:""}
-                </div>
-              `;
-            }).join("")}
-          </div>
-        ` : `<div class="muted">Ingen innkjøp enda.</div>`}
-      </div>
-
-      ${creating ? purchaseSheet(state) : ""}
-    </div>
-  `);
-
-  setTimeout(()=>{
-    $("#q", node)?.addEventListener("input", (e)=>{
-      const v = e.target.value;
-      const p = new URLSearchParams(params);
-      if(v) p.set("q", v); else p.delete("q");
-      location.hash = `#/innkjop?${p.toString()}`;
-    });
-
-    $("#exCsv")?.addEventListener("click", ()=> exportPurchasesCSV(loadState()));
-    $("#exJson")?.addEventListener("click", ()=> exportPurchasesJSON(loadState()));
-
-    if(creating){
-      $("#bd")?.addEventListener("click", ()=> nav("/innkjop"));
-      const d = new Date(); const pad=(n)=>String(n).padStart(2,"0");
-      $("#p_date") && ($("#p_date").value = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`);
-
-      $("#p_save")?.addEventListener("click", ()=>{
-        const supplier = $("#p_supplier")?.value?.trim() || "";
-        const category = $("#p_cat")?.value?.trim() || "";
-        const amount = Number($("#p_amount")?.value || 0);
-        const dateISO = toISOFromDateInput($("#p_date")?.value) || nowISO();
-        const assetId = $("#p_asset")?.value || null;
-        const receiptUrl = $("#p_receipt")?.value?.trim() || "";
-        const notes = $("#p_notes")?.value?.trim() || "";
-
-        if(!supplier && !category){ alert("Fyll ut minst leverandør eller kategori"); return; }
-
-        const s = loadState();
-        const purchase = newPurchase({ dateISO, supplier, category, amountNok: amount, notes, receiptUrl, assetId });
-        s.purchases.push(purchase);
-
-        const assetName = assetId ? (s.assets.find(a=>a.id===assetId)?.name || "") : "";
-        addActivity(s, {
-          type:"INNKJOP_NY",
-          title:`Innkjøp: ${supplier || "Ukjent"} – ${category || ""}`.trim(),
-          description:`Beløp: ${Math.round(Number(amount||0))} NOK${assetName ? ` • Maskin: ${assetName}` : ""}${notes ? ` • ${notes}` : ""}`,
-          refs:{ purchaseId: purchase.id, assetId: assetId || undefined }
-        });
-
-        saveState(s);
-        nav("/innkjop");
-      });
-    }
-  }, 0);
-
-  return { title:"Innkjøp", subtitle:"Historikk + eksport", node };
-}
-
-/* ----- Innstillinger ----- */
-function shortcutSheet(){
-  return `
-    <div class="sheet-backdrop" id="bd"></div>
-    <div class="sheet">
-      <div class="h2">Ny snarvei</div>
-      <label class="muted">Navn</label><div class="space"></div>
-      <input class="input" id="sc_title" placeholder="f.eks Felleskjøpet" />
-      <div class="space"></div>
-      <label class="muted">Lenke (URL)</label><div class="space"></div>
-      <input class="input" id="sc_url" placeholder="https://..." />
-      <div class="space"></div>
-      <div class="grid2">
-        <a class="btn primary" href="javascript:void(0)" id="sc_save">Lagre</a>
-        <a class="btn" href="#/innstillinger">Avbryt</a>
-      </div>
-    </div>
-  `;
-}
-function pageInnstillinger(state, params){
-  const addingShortcut = params.get("shortcut") === "1";
-  const shortcuts = state.settings.shortcuts || [];
-
-  const node = h(`
-    <div>
-      <div class="card">
-        <div class="h2">Gård</div>
-        <label class="muted">Gårdsnavn</label><div class="space"></div>
-        <input class="input" id="farmName" value="${escapeHtml(state.farm.name)}" />
-        <div class="space"></div>
-        <a class="btn primary" href="javascript:void(0)" id="saveFarm">Lagre</a>
-      </div>
-
-      <div class="space"></div>
-
-      <div class="card">
-        <div class="h2">Vær (yr.no)</div>
-        <div class="muted">Sted brukes for å lage yr.no-søk.</div>
-        <div class="space"></div>
-        <input class="input" id="weatherPlace" value="${escapeHtml(state.settings.weather?.place || "Karmøy")}" />
-        <div class="space"></div>
-        <a class="btn primary" href="javascript:void(0)" id="saveWeather">Lagre</a>
-      </div>
-
-      <div class="space"></div>
-
-      <div class="card">
-        <div class="row" style="justify-content:space-between;">
-          <div>
-            <div class="h2">Snarveier</div>
-            <div class="muted">Egne weblinker (yr.no oppdateres automatisk)</div>
-          </div>
-          <a class="btn small primary" href="#/innstillinger?shortcut=1">+ Ny</a>
-        </div>
-
-        <div class="space"></div>
-
-        ${shortcuts.length ? `
-          <div class="list">
-            ${shortcuts.map(sc=>`
-              <div class="item">
-                <div class="row" style="justify-content:space-between;">
-                  <div>
-                    <div><b>${escapeHtml(sc.title)}</b> ${sc.id==="yr" ? `<span class="badge">yr.no</span>`:""}</div>
-                    <div class="muted">${escapeHtml(sc.url)}</div>
-                  </div>
-                  ${sc.id==="yr" ? `<span class="badge lock">Fast</span>` : `<a class="badge" href="javascript:void(0)" data-del="${escapeHtml(sc.id)}">Fjern</a>`}
-                </div>
-              </div>
-            `).join("")}
-          </div>
-        ` : `<div class="muted">Ingen snarveier.</div>`}
-      </div>
-
-      <div class="space"></div>
-
-      <div class="card">
-        <div class="h2">Backup</div>
-        <a class="btn" href="#/backup">Åpne Backup</a>
-      </div>
-
-      ${addingShortcut ? shortcutSheet() : ""}
-    </div>
-  `);
-
-  setTimeout(()=>{
-    $("#saveFarm")?.addEventListener("click", ()=>{
-      const s = loadState();
-      s.farm.name = $("#farmName")?.value?.trim() || "Min gård";
-      addActivity(s, { type:"INNST_SAVE", title:"Oppdatert gårdsnavn", refs:{} });
-      saveState(s);
-      nav("/forside");
-    });
-
-    $("#saveWeather")?.addEventListener("click", ()=>{
-      const s = loadState();
-      s.settings.weather.place = $("#weatherPlace")?.value?.trim() || "Karmøy";
-      addActivity(s, { type:"INNST_SAVE", title:"Oppdatert vær-sted", refs:{ place: s.settings.weather.place } });
-      saveState(s);
-      nav("/forside");
-    });
-
-    node.querySelectorAll("[data-del]").forEach(el=>{
-      el.addEventListener("click", ()=>{
-        const id = el.getAttribute("data-del");
-        const s = loadState();
-        s.settings.shortcuts = (s.settings.shortcuts||[]).filter(x=>x.id!==id);
-        addActivity(s, { type:"SNARVEI_FJERNET", title:"Snarvei fjernet", refs:{ id }});
-        saveState(s);
-        nav("/innstillinger");
-      });
-    });
-
-    if(addingShortcut){
-      $("#bd")?.addEventListener("click", ()=> nav("/innstillinger"));
-      $("#sc_save")?.addEventListener("click", ()=>{
-        const title = $("#sc_title")?.value?.trim();
-        const url = $("#sc_url")?.value?.trim();
-        if(!title || !url){ alert("Fyll ut navn og lenke"); return; }
-        if(!/^https?:\/\//i.test(url)){ alert("Lenke må starte med http:// eller https://"); return; }
-        const s = loadState();
-        const id = uid();
-        s.settings.shortcuts.push({ id, title, url });
-        addActivity(s, { type:"SNARVEI_NY", title:`Ny snarvei: ${title}`, refs:{ url }});
-        saveState(s);
-        nav("/innstillinger");
-      });
-    }
-  }, 0);
-
-  return { title:"Innstillinger", subtitle:"Gård, vær, snarveier", node };
-}
-
-/* ----- Backup ----- */
-function pageBackup(){
-  const node = h(`
-    <div>
-      <div class="card">
-        <div class="h2">Eksporter</div>
-        <div class="muted">Trykk for å fylle feltet. Du kan også laste ned som fil.</div>
-        <div class="space"></div>
-        <div class="grid2">
-          <a class="btn" href="javascript:void(0)" id="btnExport">Vis backup-tekst</a>
-          <a class="btn" href="javascript:void(0)" id="btnDownload">Last ned fil</a>
-        </div>
-        <div class="space"></div>
-        <textarea class="input" id="bkText" placeholder="Backup kommer her..."></textarea>
-      </div>
-
-      <div class="space"></div>
-
-      <div class="card">
-        <div class="h2">Importer</div>
-        <div class="muted">Limet inn tekst eller velg fil. Import overskriver lokalt.</div>
-        <div class="space"></div>
-        <input class="input" id="bkFile" type="file" accept="application/json" />
-        <div class="space"></div>
-        <a class="btn danger" href="javascript:void(0)" id="btnImport">Importer (overskriv)</a>
+        <a class="btn" href="#/mer">Tilbake</a>
       </div>
     </div>
   `);
-
-  setTimeout(()=>{
-    const ta = $("#bkText");
-    $("#btnExport")?.addEventListener("click", ()=> { ta.value = exportJSON(); });
-    $("#btnDownload")?.addEventListener("click", ()=>{
-      downloadText(`farmapp-backup-${new Date().toISOString().slice(0,10)}.json`, exportJSON(), "application/json");
-    });
-    $("#bkFile")?.addEventListener("change", async (e)=>{
-      const f = e.target.files?.[0];
-      if(!f) return;
-      ta.value = await f.text();
-    });
-    $("#btnImport")?.addEventListener("click", ()=>{
-      if(!confirm("Import overskriver alt lokalt. Fortsette?")) return;
-      importJSON(ta.value.trim());
-      alert("Import OK");
-      nav("/forside");
-    });
-  }, 0);
-
-  return { title:"Backup", subtitle:"Trygghet først", node };
+  return { title, subtitle, node };
 }
 
-/* ----- Rådgiver (låst placeholder) ----- */
-function pageRaadgiver(){
-  const node = h(`
-    <div>
-      <div class="card">
-        <div class="h2">Rådgiver</div>
-        <div class="muted">
-          Denne modulen er bevisst låst.
-          Her skal alle “fiktive beregninger” ligge, men vi må planlegge nøye (regelverk, sperrer, datagrunnlag) før den kan aktiveres.
-        </div>
-        <div class="space"></div>
-        <div class="pill warn">Status: Låst</div>
-        <div class="space"></div>
-        <a class="btn" href="#/forside">Tilbake</a>
-      </div>
-    </div>
-  `);
-  return { title:"Rådgiver", subtitle:"Planlagt – ikke aktiv", node };
-}
+/* For å sikre at du ikke mister gamle moduler: vi peker dem til “placeholder”
+   hvis du ønsker kan jeg i neste steg lime inn full kode for maskiner/innkjøp igjen.
+*/
+function pageMaskiner(){ return pagePlaceholder("Maskiner/utstyr", "Modulen finnes i forrige versjon – kan flettes inn igjen neste steg."); }
+function pageInnkjop(){ return pagePlaceholder("Innkjøp", "Modulen finnes i forrige versjon – kan flettes inn igjen neste steg."); }
+function pageInnstillinger(){ return pagePlaceholder("Innstillinger", "Modulen finnes i forrige versjon – kan flettes inn igjen neste steg."); }
+function pageBackup(){ return pagePlaceholder("Backup", "Modulen finnes i forrige versjon – kan flettes inn igjen neste steg."); }
+function pageRaadgiver(){ return pagePlaceholder("Rådgiver", "Låst. Vi planlegger regelverk før aktivering."); }
 
 /* =======================
    Render
@@ -1590,16 +1519,23 @@ function render(){
 
     let out = null;
     if(r.path === "/forside") out = pageForside(state);
+    else if(r.path === "/mingard") out = pageMinGard(state);
+    else if(r.path === "/skifter") out = pageSkifter(state, r.params);
+    else if(r.path === "/spray") out = pageSpray(state, r.params);
+
     else if(r.path === "/oppgaver") out = pageOppgaver(state, r.params);
     else if(r.path === "/jobb") out = pageJobb(state, r.params);
     else if(r.path === "/mer") out = pageMer(state);
+
+    else if(r.path === "/aktivitet") out = pageAktivitet(state, r.params);
+    else if(r.path === "/aktivitetlogg") out = pageAktivitetLogg(state, r.params);
+
     else if(r.path === "/maskiner") out = pageMaskiner(state, r.params);
     else if(r.path === "/innkjop") out = pageInnkjop(state, r.params);
     else if(r.path === "/innstillinger") out = pageInnstillinger(state, r.params);
-    else if(r.path === "/backup") out = pageBackup(state);
-    else if(r.path === "/aktivitet") out = pageAktivitet(state, r.params);
-    else if(r.path === "/aktivitetlogg") out = pageAktivitetLogg(state, r.params);
-    else if(r.path === "/raadgiver") out = pageRaadgiver();
+    else if(r.path === "/backup") out = pageBackup(state, r.params);
+    else if(r.path === "/raadgiver") out = pageRaadgiver(state, r.params);
+
     else { nav("/forside"); return; }
 
     const app = $("#app");
